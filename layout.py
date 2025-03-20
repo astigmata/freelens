@@ -56,6 +56,7 @@ def create_layout():
                 html.Div("Custom Resources", className="sidebar-item"),
             ], className="sidebar-nav")
         ], className="sidebar"),
+
         # Zone principale de contenu
         html.Div([
             # En-tête
@@ -88,6 +89,13 @@ def create_layout():
             ], className="page-header"),
             # Vue des Pods
             html.Div(id="pods-view", style={'display': 'block'}, children=[
+                # Ajoutez le champ de recherche ici
+                dcc.Input(
+                    id="pods-search-input",
+                    type="text",
+                    placeholder="Search Pods...",
+                    className="search-input"
+                ),
                 html.Div([
                     dash_table.DataTable(
                         id='pods-table',
@@ -118,8 +126,16 @@ def create_layout():
                 ], className="table-container"),
                 html.Div(id="pod-details", className="pod-details"),
             ]),
+
             # Vue des Deployments
             html.Div(id="deployments-view", style={'display': 'none'}, children=[
+                # Ajoutez le champ de recherche ici
+                dcc.Input(
+                    id="deployments-search-input",
+                    type="text",
+                    placeholder="Search Deployments...",
+                    className="search-input"
+                ),
                 html.Div([
                     dash_table.DataTable(
                         id='deployments-table',
@@ -144,9 +160,47 @@ def create_layout():
                 ], className="table-container"),
                 html.Div(id="deployment-details", className="deployment-details"),
             ]),
+
+            # Vue des Daemon sets
+            html.Div(id="daemon-set-view", style={'display': 'none'}, children=[
+                # Ajoutez le champ de recherche ici
+                dcc.Input(
+                    id="daemon-sets-search-input",
+                    type="text",
+                    placeholder="Search DaemonSets...",
+                    className="search-input"
+                ),
+                html.Div([
+                    dash_table.DataTable(
+                        id='daemon-sets-table',
+                        columns=[
+                            {"name": "Name", "id": "name"},
+                            {"name": "Namespace", "id": "namespace"},
+                            {"name": "Replicas", "id": "replicas"},
+                            {"name": "Up-to-date", "id": "up_to_date"},
+                            {"name": "Available", "id": "available"},
+                            {"name": "Age", "id": "age"},
+                            {"name": "Strategy", "id": "strategy"},
+                            {"name": "Labels", "id": "labels"}
+                        ],
+                        data=[],
+                        style_header={'backgroundColor': '#2d2d2d', 'fontWeight': 'bold', 'border': '1px solid #444',
+                                      'color': '#e0e0e0'},
+                        style_cell={'textAlign': 'left', 'padding': '8px', 'border': '1px solid #444',
+                                    'backgroundColor': '#1e1e1e', 'color': '#e0e0e0'},
+                        style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#2d2d2d'}],
+                        page_size=15,
+                        style_table={'overflowX': 'auto'},
+                        row_selectable='single'
+                    )
+                ], className="table-container"),
+                html.Div(id="daemon-set-details", className="daemon-set-details"),
+            ]),
+
             # Stockage des données
             dcc.Store(id='pods-data-store'),
             dcc.Store(id='deployments-data-store'),
+            dcc.Store(id='daemon-sets-data-store'),
             dcc.Store(id='workloads-menu-state', data={'open': False}),
             dcc.Store(id='config-menu-state', data={'open': False}),
             dcc.Store(id='network-menu-state', data={'open': False}),

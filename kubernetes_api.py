@@ -126,3 +126,30 @@ def get_deployment_details(name, namespace):
         ])
     except Exception as e:
         return html.Div(f"Erreur lors de la récupération des détails du déploiement: {str(e)}")
+
+def get_daemon_sets(namespace):
+    try:
+        config.load_kube_config()
+        api = client.AppsV1Api()
+        if namespace == 'all':
+            daemon_sets = api.list_daemon_set_for_all_namespaces(watch=False)
+        else:
+            daemon_sets = api.list_namespaced_daemon_set(namespace, watch=False)
+        daemon_sets_data = []
+        for daemon_set in daemon_sets.items:
+            creation_time = daemon_set.metadata.creation_timestamp
+            age = datetime.datetime.now(creation_time.tzinfo) - creation_time
+            age_str = f"{age.days}d" if age.days > 0 else f"{int(age.seconds / 3600)}h"
+            daemon_sets_data.append({
+                "name": daemon_set.metadata.name,
+                "namespace": daemon_set.metadata.namespace,
+                "replicas": f"{daemon_set.status.ready_replicas or 0}/{daemon_set.spec.replicas}",
+                "up_to_date": daemon_set.status.updated_replicas or 0,
+                "available": daemon_set.status.available_replicas or 0,
+                "age": age_str,
+                "strategy": daemon_set.spec.strategy.type,
+                "labels": ", ".join([f"{k}={v}" for k, v in daemon_set.metadata.labels.items()]) if daemon_set.metadata.labels else "N/A"
+            })
+        return daemon_sets_data, "Connecté"
+    except Exception as e:
+        return [], f"Erreur: {str(e)}"

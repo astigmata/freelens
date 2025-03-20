@@ -1,7 +1,7 @@
-from dash import Input, Output, State
+from dash import Input, Output, State, callback_context
 from dash import html
-from kubernetes_api import get_pods, get_pod_details, get_deployments, get_deployment_details
-from dash import callback_context
+from kubernetes_api import get_pods, get_pod_details, get_deployments, get_deployment_details, get_daemon_sets
+
 
 def register_callbacks(app):
     # Liste de tous les IDs des sous-éléments
@@ -22,6 +22,7 @@ def register_callbacks(app):
         [Output(id, 'className') for id in all_subitem_ids] +
         [Output('pods-view', 'style'),
          Output('deployments-view', 'style'),
+         Output('daemon-set-view', 'style'),
          Output('page-title', 'children')],
         [Input(id, 'n_clicks') for id in all_subitem_ids],
         prevent_initial_call=False
@@ -30,16 +31,29 @@ def register_callbacks(app):
         ctx = callback_context
         if not ctx.triggered:
             # Par défaut : "Pods" actif et vue des pods affichée
-            return ["sidebar-subitem active" if id == "workloads-pods" else "sidebar-subitem" for id in all_subitem_ids] + [{'display': 'block'}, {'display': 'none'}, "Pods"]
+            return (["sidebar-subitem active" if id == "workloads-pods" else "sidebar-subitem" for id in
+                     all_subitem_ids] +
+                    [{'display': 'block'}, {'display': 'none'}, {'display': 'none'}, "Pods"])
         else:
             triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
             if triggered_id == "workloads-pods":
-                return ["sidebar-subitem active" if id == "workloads-pods" else "sidebar-subitem" for id in all_subitem_ids] + [{'display': 'block'}, {'display': 'none'}, "Pods"]
+                return (["sidebar-subitem active" if id == "workloads-pods" else "sidebar-subitem" for id in
+                         all_subitem_ids] +
+                        [{'display': 'block'}, {'display': 'none'}, {'display': 'none'}, "Pods"])
             elif triggered_id == "workloads-deployments":
-                return ["sidebar-subitem active" if id == "workloads-deployments" else "sidebar-subitem" for id in all_subitem_ids] + [{'display': 'none'}, {'display': 'block'}, "Deployments"]
+                return (["sidebar-subitem active" if id == "workloads-deployments" else "sidebar-subitem" for id in
+                         all_subitem_ids] +
+                        [{'display': 'none'}, {'display': 'block'}, {'display': 'none'}, "Deployments"])
+            elif triggered_id == "workloads-daemonsets":
+                return (["sidebar-subitem active" if id == "workloads-daemonsets" else "sidebar-subitem" for id in
+                         all_subitem_ids] +
+                        [{'display': 'none'}, {'display': 'none'}, {'display': 'block'}, "DaemonSets"])
             else:
                 # Pour les autres sous-menus, garder la vue des pods par défaut
-                return ["sidebar-subitem active" if id == triggered_id else "sidebar-subitem" for id in all_subitem_ids] + [{'display': 'block'}, {'display': 'none'}, "Pods"]
+                return (["sidebar-subitem active" if id == triggered_id else "sidebar-subitem" for id in
+                         all_subitem_ids] +
+                        [{'display': 'block'}, {'display': 'none'}, {'display': 'none'}, "Pods"])
 
     # Callback pour afficher un message dans la console
     @app.callback(
@@ -52,22 +66,40 @@ def register_callbacks(app):
             print(f"Bouton de connexion cliqué! (clic #{n_clicks})")
         return None
 
-    # Mise à jour des données des pods
+    # Mise à jour des données des ressources (pods, deployments, daemonsets) en fonction du bouton cliqué
     @app.callback(
         [Output('pods-data-store', 'data'),
-         Output('connection-status', 'children')],
+         Output('deployments-data-store', 'data'),
+         Output('daemon-sets-data-store', 'data'),
+         Output('pods-connection-status', 'children'),
+         Output('deployments-connection-status', 'children'),
+         Output('daemon-sets-connection-status', 'children')],
         [Input('connect-button', 'n_clicks'),
          Input('refresh-button', 'n_clicks'),
          Input('namespace-dropdown', 'value')],
         prevent_initial_call=True
     )
-    def update_pods_data(connect_clicks, refresh_clicks, namespace):
-        return get_pods(namespace)
+    def update_resources_data(connect_clicks, refresh_clicks, namespace):
+        ctx = callback_context
+        triggered = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+
+        # Initialisation des valeurs par défaut
+        pods_data, pods_status = [], "Non connecté"
+        deployments_data, deployments_status = [], "Non connecté"
+        daemon_sets_data, daemon_sets_status = [], "Non connecté"
+
+        # Si un bouton a été cliqué ou le namespace a changé, mettre à jour toutes les données
+        if triggered:
+            pods_data, pods_status = get_pods(namespace)
+            deployments_data, deployments_status = get_deployments(namespace)
+            daemon_sets_data, daemon_sets_status = get_daemon_sets(namespace)
+
+        return pods_data, deployments_data, daemon_sets_data, pods_status, deployments_status, daemon_sets_status
 
     # Filtrage des pods dans le tableau
     @app.callback(
         Output('pods-table', 'data'),
-        [Input('search-input', 'value'),
+        [Input('pods-search-input', 'value'),
          Input('pods-data-store', 'data')]
     )
     def filter_pods(search_term, pods_data):
@@ -84,27 +116,15 @@ def register_callbacks(app):
         State('pods-table', 'data')
     )
     def update_pod_details(selected_rows, data):
-        if selected_rows:
+        if selected_rows and data:
             pod = data[selected_rows[0]]
             return get_pod_details(pod['name'], pod['namespace'])
         return "Sélectionnez un pod pour voir les détails"
 
-    # Mise à jour des données des déploiements avec allow_duplicate=True
-    @app.callback(
-        [Output('deployments-data-store', 'data', allow_duplicate=True),
-         Output('connection-status', 'children', allow_duplicate=True)],
-        [Input('connect-button', 'n_clicks'),
-         Input('refresh-button', 'n_clicks'),
-         Input('namespace-dropdown', 'value')],
-        prevent_initial_call=True
-    )
-    def update_deployments_data(connect_clicks, refresh_clicks, namespace):
-        return get_deployments(namespace)
-
     # Filtrage des déploiements dans le tableau
     @app.callback(
         Output('deployments-table', 'data'),
-        [Input('search-input', 'value'),
+        [Input('deployments-search-input', 'value'),
          Input('deployments-data-store', 'data')]
     )
     def filter_deployments(search_term, deployments_data):
@@ -121,10 +141,23 @@ def register_callbacks(app):
         State('deployments-table', 'data')
     )
     def update_deployment_details(selected_rows, data):
-        if selected_rows:
+        if selected_rows and data:
             deployment = data[selected_rows[0]]
             return get_deployment_details(deployment['name'], deployment['namespace'])
         return "Sélectionnez un déploiement pour voir les détails"
+
+    # Filtrage des daemon sets dans le tableau
+    @app.callback(
+        Output('daemon-sets-table', 'data'),
+        [Input('daemon-sets-search-input', 'value'),
+         Input('daemon-sets-data-store', 'data')]
+    )
+    def filter_daemon_sets(search_term, daemon_sets_data):
+        if daemon_sets_data is None:
+            return []
+        if search_term:
+            return [ds for ds in daemon_sets_data if search_term.lower() in ds['name'].lower()]
+        return daemon_sets_data
 
     # Afficher/masquer les sous-menus Workloads
     @app.callback(
