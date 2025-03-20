@@ -2,6 +2,14 @@ from kubernetes import client, config
 import datetime
 from dash import html
 
+
+def get_namespaces():
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    namespaces = v1.list_namespace()
+    return [ns.metadata.name for ns in namespaces.items]
+
+
 def get_pods(namespace):
     try:
         config.load_kube_config()
@@ -33,6 +41,7 @@ def get_pods(namespace):
         return pods_data, "Connecté"
     except Exception as e:
         return [], f"Erreur: {str(e)}"
+
 
 def get_pod_details(name, namespace):
     try:
@@ -71,6 +80,7 @@ def get_pod_details(name, namespace):
     except Exception as e:
         return html.Div(f"Erreur lors de la récupération des détails du pod: {str(e)}")
 
+
 def get_deployments(namespace):
     try:
         config.load_kube_config()
@@ -97,6 +107,7 @@ def get_deployments(namespace):
         return deployments_data, "Connecté"
     except Exception as e:
         return [], f"Erreur: {str(e)}"
+
 
 def get_deployment_details(name, namespace):
     try:

@@ -56,6 +56,7 @@ def create_layout():
                 html.Div("Custom Resources", className="sidebar-item"),
             ], className="sidebar-nav")
         ], className="sidebar"),
+
         # Zone principale de contenu
         html.Div([
             # En-tête
@@ -64,12 +65,7 @@ def create_layout():
                 html.Div([
                     dcc.Dropdown(
                         id='namespace-dropdown',
-                        options=[
-                            {'label': 'All namespaces', 'value': 'all'},
-                            {'label': 'kube-system', 'value': 'kube-system'},
-                            {'label': 'default', 'value': 'default'},
-                            {'label': 'deluge', 'value': 'deluge'},
-                        ],
+                        options=[],
                         value='all',
                         clearable=False,
                         className="namespace-selector"
@@ -86,6 +82,7 @@ def create_layout():
                     html.Div(id='dummy-output', style={'display': 'none'})
                 ], className="header-controls")
             ], className="page-header"),
+
             # Vue des Pods
             html.Div(id="pods-view", style={'display': 'block'}, children=[
                 html.Div([
@@ -103,8 +100,10 @@ def create_layout():
                             {"name": "Status", "id": "status"}
                         ],
                         data=[],
-                        style_header={'backgroundColor': '#2d2d2d', 'fontWeight': 'bold', 'border': '1px solid #444', 'color': '#e0e0e0'},
-                        style_cell={'textAlign': 'left', 'padding': '8px', 'border': '1px solid #444', 'backgroundColor': '#1e1e1e', 'color': '#e0e0e0'},
+                        style_header={'backgroundColor': '#2d2d2d', 'fontWeight': 'bold', 'border': '1px solid #444',
+                                      'color': '#e0e0e0'},
+                        style_cell={'textAlign': 'left', 'padding': '8px', 'border': '1px solid #444',
+                                    'backgroundColor': '#1e1e1e', 'color': '#e0e0e0'},
                         style_data_conditional=[
                             {'if': {'row_index': 'odd'}, 'backgroundColor': '#2d2d2d'},
                             {'if': {'filter_query': '{status} = "Running"'}, 'color': '#4caf50'},
@@ -118,6 +117,7 @@ def create_layout():
                 ], className="table-container"),
                 html.Div(id="pod-details", className="pod-details"),
             ]),
+
             # Vue des Deployments
             html.Div(id="deployments-view", style={'display': 'none'}, children=[
                 html.Div([
@@ -144,6 +144,7 @@ def create_layout():
                 ], className="table-container"),
                 html.Div(id="deployment-details", className="deployment-details"),
             ]),
+
             # Stockage des données
             dcc.Store(id='pods-data-store'),
             dcc.Store(id='deployments-data-store'),

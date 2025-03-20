@@ -1,6 +1,5 @@
 from dash import Input, Output, State
-from dash import html
-from kubernetes_api import get_pods, get_pod_details, get_deployments, get_deployment_details
+from kubernetes_api import get_pods, get_pod_details, get_deployments, get_deployment_details, get_namespaces
 from dash import callback_context
 
 def register_callbacks(app):
@@ -52,6 +51,20 @@ def register_callbacks(app):
             print(f"Bouton de connexion cliqué! (clic #{n_clicks})")
         return None
 
+    # Récupère les namespaces
+    @app.callback(
+        Output('namespace-dropdown', 'options'),
+        Input('connect-button', 'n_clicks')
+    )
+    def update_namespace_options(n_clicks):
+        if n_clicks is None:
+            return []
+
+        namespaces = get_namespaces()
+        options = [{'label': 'All namespaces', 'value': 'all'}]
+        options.extend([{'label': ns, 'value': ns} for ns in namespaces])
+        return options
+
     # Mise à jour des données des pods
     @app.callback(
         [Output('pods-data-store', 'data'),
@@ -62,6 +75,8 @@ def register_callbacks(app):
         prevent_initial_call=True
     )
     def update_pods_data(connect_clicks, refresh_clicks, namespace):
+        if connect_clicks is None:
+            return []
         return get_pods(namespace)
 
     # Filtrage des pods dans le tableau
@@ -99,6 +114,8 @@ def register_callbacks(app):
         prevent_initial_call=True
     )
     def update_deployments_data(connect_clicks, refresh_clicks, namespace):
+        if connect_clicks is None:
+            return []
         return get_deployments(namespace)
 
     # Filtrage des déploiements dans le tableau

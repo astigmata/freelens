@@ -11,7 +11,7 @@ body {
 }
 .sidebar {
     width: 250px;
-    background-color: #1e1e1e;
+    background-color: #36393E;
     color: #e0e0e0;
     overflow-y: auto;
     border-right: 1px solid #333;
@@ -27,7 +27,7 @@ body {
 }
 .sidebar-subitems {
     padding-left: 20px;
-    background-color: #1e1e1e;
+    background-color: #36393E;
 }
 .sidebar-subitem {
     padding: 8px 15px;
@@ -37,8 +37,8 @@ body {
     background-color: #2d2d2d;
 }
 .sidebar-subitem.active {
-    color: #3e87e8;
-    font-weight: bold;
+    color: white;
+    background-color: #3D90CE;
 }
 .main-content {
     flex: 1;
@@ -90,7 +90,7 @@ body {
     background-color: #2d76d7;
 }
 .table-container {
-    background-color: #1e1e1e;
+    background-color: #262B2F;
     border-radius: 4px;
     border: 1px solid #333;
     width: 100%;
@@ -127,4 +127,11 @@ body {
 }
 .status-failed {
     color: #f44336;
+}
+
+.dash-spreadsheet tr:hover td.dash-cell {
+    background-color: #3a3a3a !important;
+    color: white !important;
+    border-color: #555 !important;
+    border-width: 0.5px !important;
 }
