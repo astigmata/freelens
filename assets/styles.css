@@ -25,10 +25,6 @@ body {
 .sidebar-item:hover {
     background-color: #2d2d2d;
 }
-.sidebar-item.active {
-    background-color: #3e87e8;
-    color: white;
-}
 .sidebar-subitems {
     padding-left: 20px;
     background-color: #1e1e1e;
@@ -99,7 +95,7 @@ body {
     border: 1px solid #333;
     width: 100%;
 }
-.pod-details {
+.pod-details, .deployment-details {
     margin-top: 20px;
     background-color: #2d2d2d;
     border-radius: 4px;
