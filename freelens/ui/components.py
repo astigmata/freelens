@@ -54,7 +54,7 @@ def render_yaml(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
 
 
 def render_logs(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
-    """Logs tab scaffold: a container selector, a reload button and an output pane."""
+    """Logs tab: container selector, line filter, reload + download, output pane."""
     containers = ops.list_containers(get_clients(), name, namespace)
     return html.Div(
         [
@@ -67,11 +67,55 @@ def render_logs(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
                         clearable=False,
                         className="namespace-selector",
                     ),
-                    html.Button("Reload logs", id="log-refresh", n_clicks=0, className="action-button"),
+                    dcc.Input(
+                        id="log-filter",
+                        type="text",
+                        placeholder="Filter lines…",
+                        debounce=True,
+                        className="search-input",
+                    ),
+                    html.Button("Reload", id="log-refresh", n_clicks=0, className="action-button"),
+                    html.Button("Download", id="log-download-btn", n_clicks=0, className="action-button"),
                 ],
                 className="logs-controls",
             ),
             html.Pre(id="log-output", className="logs-view"),
+            dcc.Download(id="log-download"),
+        ]
+    )
+
+
+def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
+    """Exec console: pick a container, type a command, run it, see the output."""
+    containers = ops.list_containers(get_clients(), name, namespace)
+    return html.Div(
+        [
+            html.Div(
+                [
+                    dcc.Dropdown(
+                        id="exec-container",
+                        options=[{"label": c, "value": c} for c in containers],
+                        value=containers[0] if containers else None,
+                        clearable=False,
+                        className="namespace-selector",
+                    ),
+                    dcc.Input(
+                        id="exec-command",
+                        type="text",
+                        placeholder="Command, e.g. ls -la /  (Enter to run)",
+                        debounce=False,
+                        n_submit=0,
+                        className="search-input exec-command",
+                    ),
+                    html.Button("Run", id="exec-run", n_clicks=0, className="action-button"),
+                ],
+                className="logs-controls",
+            ),
+            html.Pre(
+                "$ run a command above…",
+                id="exec-output",
+                className="logs-view",
+            ),
         ]
     )
 

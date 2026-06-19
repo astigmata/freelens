@@ -58,6 +58,7 @@ def register(app: Dash) -> None:
         Output("resource-table", "columns"),
         Output("resource-table", "style_data_conditional"),
         Output("resource-table", "active_cell"),
+        Output("resource-table", "selected_rows"),
         Output("resource-view", "style"),
         Output("helm-view", "style"),
         Output("crd-view", "style"),
@@ -86,7 +87,7 @@ def register(app: Dash) -> None:
             inactive = ["sidebar-subitem" for _ in link_ids]
             res_style, helm_style, crd_style = styles(path)
             return (
-                inactive, no_update, no_update, no_update, no_update,
+                inactive, no_update, no_update, no_update, no_update, no_update,
                 res_style, helm_style, crd_style, standalone_classes,
             )
 
@@ -99,8 +100,8 @@ def register(app: Dash) -> None:
         ]
         conditional = BASE_CONDITIONAL + descriptor.table_conditional
         res_style, helm_style, crd_style = styles("resource")
-        # Clear any active cell (selection) when switching resource.
+        # Clear the active cell and any checkbox selection when switching resource.
         return (
-            classes, descriptor.title, descriptor.table_columns(), conditional, None,
+            classes, descriptor.title, descriptor.table_columns(), conditional, None, [],
             res_style, helm_style, crd_style, standalone_classes,
         )

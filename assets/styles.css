@@ -602,6 +602,21 @@ body {
 .logs-controls .namespace-selector {
     width: 260px;
 }
+.exec-command {
+    flex: 1;
+    min-width: 240px;
+}
+
+/* Bulk-actions toolbar (multi-select delete) */
+.bulk-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.bulk-toolbar:empty {
+    display: none;
+}
 .detail-error {
     color: var(--red);
     margin-top: 16px;

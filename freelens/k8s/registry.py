@@ -66,8 +66,11 @@ class ResourceDescriptor:
     get_fn: Callable[[Clients, str, str], Any]
     namespaced: bool = True
     supports_logs: bool = False
+    supports_exec: bool = False
     actions: tuple[ResourceAction, ...] = ()
     table_conditional: list = field(default_factory=list)
+    # Generic delete used by bulk selection; None => not bulk-deletable.
+    delete_fn: Callable[[Clients, str, str], None] | None = None
 
     @property
     def title(self) -> str:
@@ -130,6 +133,12 @@ def _cluster_list(api_attr: str, fn_name: str):
 
 
 def _get(api_attr: str, fn_name: str, namespaced: bool = True):
+    if namespaced:
+        return lambda c, name, ns: getattr(getattr(c, api_attr), fn_name)(name, ns)
+    return lambda c, name, _ns: getattr(getattr(c, api_attr), fn_name)(name)
+
+
+def _delete(api_attr: str, fn_name: str, namespaced: bool = True):
     if namespaced:
         return lambda c, name, ns: getattr(getattr(c, api_attr), fn_name)(name, ns)
     return lambda c, name, _ns: getattr(getattr(c, api_attr), fn_name)(name)
@@ -224,7 +233,9 @@ PODS = ResourceDescriptor(
     label="Pods",
     list_fn=_ns_list("core", "list_pod_for_all_namespaces", "list_namespaced_pod"),
     get_fn=_get("core", "read_namespaced_pod"),
+    delete_fn=_delete("core", "delete_namespaced_pod"),
     supports_logs=True,
+    supports_exec=True,
     actions=(_DELETE_POD,),
     columns=[
         Column("Name", _NAME),
@@ -273,6 +284,7 @@ DEPLOYMENTS = ResourceDescriptor(
         "apps", "list_deployment_for_all_namespaces", "list_namespaced_deployment"
     ),
     get_fn=_get("apps", "read_namespaced_deployment"),
+    delete_fn=_delete("apps", "delete_namespaced_deployment"),
     actions=(_SCALE, _RESTART),
     columns=[
         Column("Name", _NAME),
@@ -322,6 +334,7 @@ DAEMONSETS = ResourceDescriptor(
         "apps", "list_daemon_set_for_all_namespaces", "list_namespaced_daemon_set"
     ),
     get_fn=_get("apps", "read_namespaced_daemon_set"),
+    delete_fn=_delete("apps", "delete_namespaced_daemon_set"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -346,6 +359,7 @@ STATEFULSETS = ResourceDescriptor(
         "apps", "list_stateful_set_for_all_namespaces", "list_namespaced_stateful_set"
     ),
     get_fn=_get("apps", "read_namespaced_stateful_set"),
+    delete_fn=_delete("apps", "delete_namespaced_stateful_set"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -370,6 +384,7 @@ REPLICASETS = ResourceDescriptor(
         "apps", "list_replica_set_for_all_namespaces", "list_namespaced_replica_set"
     ),
     get_fn=_get("apps", "read_namespaced_replica_set"),
+    delete_fn=_delete("apps", "delete_namespaced_replica_set"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -389,6 +404,7 @@ JOBS = ResourceDescriptor(
     label="Jobs",
     list_fn=_ns_list("batch", "list_job_for_all_namespaces", "list_namespaced_job"),
     get_fn=_get("batch", "read_namespaced_job"),
+    delete_fn=_delete("batch", "delete_namespaced_job"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -411,6 +427,7 @@ CRONJOBS = ResourceDescriptor(
         "batch", "list_cron_job_for_all_namespaces", "list_namespaced_cron_job"
     ),
     get_fn=_get("batch", "read_namespaced_cron_job"),
+    delete_fn=_delete("batch", "delete_namespaced_cron_job"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -434,6 +451,7 @@ SERVICES = ResourceDescriptor(
         "core", "list_service_for_all_namespaces", "list_namespaced_service"
     ),
     get_fn=_get("core", "read_namespaced_service"),
+    delete_fn=_delete("core", "delete_namespaced_service"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -460,6 +478,7 @@ CONFIGMAPS = ResourceDescriptor(
         "core", "list_config_map_for_all_namespaces", "list_namespaced_config_map"
     ),
     get_fn=_get("core", "read_namespaced_config_map"),
+    delete_fn=_delete("core", "delete_namespaced_config_map"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -476,6 +495,7 @@ SECRETS = ResourceDescriptor(
     label="Secrets",
     list_fn=_ns_list("core", "list_secret_for_all_namespaces", "list_namespaced_secret"),
     get_fn=_get("core", "read_namespaced_secret"),
+    delete_fn=_delete("core", "delete_namespaced_secret"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -501,6 +521,7 @@ PVCS = ResourceDescriptor(
         "list_namespaced_persistent_volume_claim",
     ),
     get_fn=_get("core", "read_namespaced_persistent_volume_claim"),
+    delete_fn=_delete("core", "delete_namespaced_persistent_volume_claim"),
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -526,6 +547,7 @@ PVS = ResourceDescriptor(
     namespaced=False,
     list_fn=_cluster_list("core", "list_persistent_volume"),
     get_fn=_get("core", "read_persistent_volume", namespaced=False),
+    delete_fn=_delete("core", "delete_persistent_volume", namespaced=False),
     columns=[
         Column("Name", _NAME),
         Column("Capacity", lambda p: (p.spec.capacity or {}).get("storage", "N/A")),
@@ -579,6 +601,7 @@ NAMESPACES = ResourceDescriptor(
     namespaced=False,
     list_fn=_cluster_list("core", "list_namespace"),
     get_fn=_get("core", "read_namespace", namespaced=False),
+    delete_fn=_delete("core", "delete_namespace", namespaced=False),
     columns=[
         Column("Name", _NAME),
         Column("Status", lambda n: n.status.phase),

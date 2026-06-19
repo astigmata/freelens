@@ -8,6 +8,7 @@ import datetime
 
 import yaml
 from kubernetes import client as k8s
+from kubernetes.stream import stream
 
 from .client import Clients
 
@@ -36,6 +37,32 @@ def pod_logs(
         container=container,
         tail_lines=tail_lines,
         timestamps=True,
+    )
+
+
+def exec_command(
+    clients: Clients,
+    name: str,
+    namespace: str,
+    container: str | None,
+    command: str,
+) -> str:
+    """Run a shell command in a pod container and return combined stdout/stderr.
+
+    Non-interactive (no TTY): the command runs through ``/bin/sh -c`` and its
+    output is captured in one shot — the equivalent of ``kubectl exec``, not an
+    interactive shell session.
+    """
+    return stream(
+        clients.core.connect_get_namespaced_pod_exec,
+        name,
+        namespace,
+        container=container,
+        command=["/bin/sh", "-c", command],
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
     )
 
 

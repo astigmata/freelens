@@ -73,10 +73,12 @@ def _resource_table() -> dash_table.DataTable:
         style_data_conditional=BASE_CONDITIONAL + default.table_conditional,
         page_size=TABLE_PAGE_SIZE,
         style_table={"overflowX": "auto"},
-        # Selection is driven by clicking any cell in a row (active_cell),
-        # which is far more practical than aiming at a radio button.
+        # Row detail is driven by clicking any cell (active_cell); the checkbox
+        # column (row_selectable) is for bulk operations like multi-delete.
         sort_action="native",
         filter_action="native",
+        row_selectable="multi",
+        selected_rows=[],
         css=[{"selector": ".dash-cell", "rule": "cursor: pointer;"}],
     )
 
@@ -137,6 +139,7 @@ def _detail_panel() -> html.Div:
                     dcc.Tab(label="Overview", value="overview", className="detail-tab"),
                     dcc.Tab(label="YAML", value="yaml", className="detail-tab"),
                     dcc.Tab(label="Logs", value="logs", className="detail-tab"),
+                    dcc.Tab(label="Exec", value="exec", className="detail-tab"),
                 ],
             ),
             html.Div(id="resource-details", className="pod-details"),
@@ -404,6 +407,21 @@ def create_layout() -> html.Div:
                     html.Div(
                         [
                             _header(),
+                            # Bulk actions on checkbox-selected rows.
+                            html.Div(
+                                [
+                                    html.Button(
+                                        id="bulk-delete-btn",
+                                        n_clicks=0,
+                                        className="action-button destructive",
+                                        style={"display": "none"},
+                                    ),
+                                    html.Span(id="bulk-result", className="action-result"),
+                                ],
+                                className="bulk-toolbar",
+                            ),
+                            dcc.ConfirmDialog(id="bulk-confirm"),
+                            dcc.Store(id="bulk-pending"),
                             dcc.Loading(
                                 html.Div(_resource_table(), className="table-container"),
                                 type="default",

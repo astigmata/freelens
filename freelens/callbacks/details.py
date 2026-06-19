@@ -2,7 +2,7 @@
 
 import logging
 
-from dash import Dash, Input, Output, State, html
+from dash import Dash, Input, Output, State, dcc, html
 from dash.exceptions import PreventUpdate
 
 from ..k8s import operations as ops
@@ -12,9 +12,18 @@ from ..ui.components import (
     details_placeholder,
     render_actions,
     render_details,
+    render_exec,
     render_logs,
     render_yaml,
 )
+
+
+def _filter_lines(text: str, needle: str | None) -> str:
+    if not needle:
+        return text
+    low = needle.lower()
+    matches = [line for line in text.splitlines() if low in line.lower()]
+    return "\n".join(matches) or "(no matching lines)"
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +76,10 @@ def register(app: Dash) -> None:
                 if not descriptor.supports_logs:
                     return html.Div("Logs are not available for this resource type.")
                 return render_logs(descriptor, name, namespace)
+            if tab == "exec":
+                if not descriptor.supports_exec:
+                    return html.Div("Exec is not available for this resource type.")
+                return render_exec(descriptor, name, namespace)
             return render_details(descriptor, get_object(descriptor, name, namespace))
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not render %s for %s: %s", tab, name, exc)
@@ -76,14 +89,54 @@ def register(app: Dash) -> None:
         Output("log-output", "children"),
         Input("log-container", "value"),
         Input("log-refresh", "n_clicks"),
+        Input("log-filter", "value"),
         State("selected-resource", "data"),
     )
-    def stream_logs(container, _refresh, selected):
+    def stream_logs(container, _refresh, log_filter, selected):
         if not selected or not container:
             raise PreventUpdate
         try:
-            return ops.pod_logs(
+            logs = ops.pod_logs(
                 get_clients(), selected["name"], selected["namespace"], container
-            ) or "(no logs)"
+            )
+            return _filter_lines(logs, log_filter) or "(no logs)"
         except Exception as exc:  # noqa: BLE001
             return f"Error fetching logs: {exc}"
+
+    @app.callback(
+        Output("log-download", "data"),
+        Input("log-download-btn", "n_clicks"),
+        State("log-container", "value"),
+        State("log-filter", "value"),
+        State("selected-resource", "data"),
+        prevent_initial_call=True,
+    )
+    def download_logs(n_clicks, container, log_filter, selected):
+        if not n_clicks or not selected or not container:
+            raise PreventUpdate
+        logs = ops.pod_logs(
+            get_clients(), selected["name"], selected["namespace"], container
+        )
+        logs = _filter_lines(logs, log_filter)
+        filename = f"{selected['name']}_{container}.log"
+        return dcc.send_string(logs, filename)
+
+    @app.callback(
+        Output("exec-output", "children"),
+        Input("exec-run", "n_clicks"),
+        Input("exec-command", "n_submit"),
+        State("exec-command", "value"),
+        State("exec-container", "value"),
+        State("selected-resource", "data"),
+        prevent_initial_call=True,
+    )
+    def run_exec(_clicks, _submit, command, container, selected):
+        if not selected or not command:
+            raise PreventUpdate
+        try:
+            output = ops.exec_command(
+                get_clients(), selected["name"], selected["namespace"], container, command
+            )
+            return f"$ {command}\n{output}" if output else f"$ {command}\n(no output)"
+        except Exception as exc:  # noqa: BLE001
+            return f"$ {command}\nError: {exc}"
