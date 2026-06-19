@@ -602,9 +602,13 @@ body {
 .logs-controls .namespace-selector {
     width: 260px;
 }
-.exec-command {
-    flex: 1;
-    min-width: 240px;
+.exec-terminal {
+    width: 100%;
+    height: 460px;
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--code-bg);
 }
 
 /* Bulk-actions toolbar (multi-select delete) */

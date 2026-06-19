@@ -9,8 +9,12 @@ inspired by [Lens](https://k8slens.dev/).
 - Filter by namespace, free-text search, and **native column sorting / filtering**.
 - Connection status badge, active-context label and live row counter.
 - **Auto-refresh** (toggle) plus a manual refresh button.
-- Resource detail panel with **Overview / YAML / Logs** tabs.
+- Resource detail panel with **Overview / YAML / Logs / Exec** tabs. Logs have a
+  line filter and a download button; **Exec** opens a real interactive terminal
+  (TTY) into the pod via xterm.js over a WebSocket.
 - **Write actions** with confirmation: scale & restart Deployments, delete Pods.
+- **Multi-select delete**: checkboxes on every row delete many resources at once
+  (selection resets when you switch resource type).
 - **Helm** page: list releases, deploy charts (with custom values), inspect
   values / history / manifest, and roll back or uninstall — all via the `helm` CLI.
   A built-in **catalog** of popular charts (MetalLB, ingress-nginx, cert-manager,
@@ -25,7 +29,8 @@ inspired by [Lens](https://k8slens.dev/).
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.10+ (`flask-sock` enables the pod terminal; the xterm.js front-end is
+  loaded from a CDN, so the browser needs internet access for the Exec tab).
 - Access to a Kubernetes cluster via a local `kubeconfig` or in-cluster credentials.
 - The [`helm`](https://helm.sh/) CLI on `PATH` (optional — only for the Helm page).
 
@@ -77,6 +82,7 @@ and callback code stay generic.
 app.py                     # entry point
 freelens/
   config.py                # settings (env-overridable)
+  terminal.py              # xterm.js page + WebSocket bridge to pod exec (TTY)
   k8s/
     client.py              # cached Kubernetes API clients (core/apps/batch) + context
     formatters.py          # shared display helpers (age, labels, ...)

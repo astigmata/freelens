@@ -12,13 +12,25 @@ def _now(tzinfo) -> datetime.datetime:
 
 
 def age_short(creation_timestamp) -> str:
-    """Compact age, e.g. ``3d`` or ``5h`` (Lens-style table column)."""
+    """Compact age, Lens-style: ``3d`` / ``5h`` / ``4m12s`` / ``8s``.
+
+    Below an hour the value is shown in minutes and seconds (and just seconds
+    below a minute), which is far more useful for freshly-created pods.
+    """
     if creation_timestamp is None:
         return "N/A"
     age = _now(creation_timestamp.tzinfo) - creation_timestamp
-    if age.days > 0:
-        return f"{age.days}d"
-    return f"{int(age.total_seconds() // 3600)}h"
+    total = max(int(age.total_seconds()), 0)
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if days > 0:
+        return f"{days}d"
+    if hours > 0:
+        return f"{hours}h"
+    if minutes > 0:
+        return f"{minutes}m{seconds}s"
+    return f"{seconds}s"
 
 
 def age_long(creation_timestamp) -> str:

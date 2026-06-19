@@ -6,6 +6,7 @@ import dash
 
 from freelens import config
 from freelens.callbacks import register_callbacks
+from freelens.terminal import register_terminal
 from freelens.ui.layout import create_layout
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -19,10 +20,13 @@ app = dash.Dash(
 )
 app.layout = create_layout()
 register_callbacks(app)
+# Interactive pod terminal (xterm.js <-> WebSocket <-> pod exec stream).
+register_terminal(app.server)
 
 # Exposed for WSGI servers (e.g. gunicorn freelens app:server).
 server = app.server
 
 
 if __name__ == "__main__":
-    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
+    # threaded=True so the terminal WebSocket runs alongside normal requests.
+    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG, threaded=True)

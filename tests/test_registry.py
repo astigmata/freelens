@@ -61,6 +61,15 @@ def test_age_short_handles_days_and_hours():
     assert fmt.age_short(None) == "N/A"
 
 
+def test_age_short_uses_minutes_and_seconds_under_an_hour():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    # A couple of seconds of slack so the elapsed clock time doesn't tip a
+    # boundary value into the next-lower unit.
+    assert fmt.age_short(now - datetime.timedelta(minutes=4, seconds=10)) == "4m10s"
+    assert fmt.age_short(now - datetime.timedelta(seconds=8)) == "8s"
+    assert fmt.age_short(now - datetime.timedelta(minutes=59, seconds=2)) == "59m2s"
+
+
 def test_age_long_includes_days_hours_minutes():
     now = datetime.datetime.now(datetime.timezone.utc)
     result = fmt.age_long(now - datetime.timedelta(days=1, hours=2, minutes=3))

@@ -15,6 +15,7 @@ from ..ui.components import (
     render_exec,
     render_logs,
     render_yaml,
+    terminal_src as render_terminal_src,
 )
 
 
@@ -122,21 +123,16 @@ def register(app: Dash) -> None:
         return dcc.send_string(logs, filename)
 
     @app.callback(
-        Output("exec-output", "children"),
-        Input("exec-run", "n_clicks"),
-        Input("exec-command", "n_submit"),
-        State("exec-command", "value"),
-        State("exec-container", "value"),
+        Output("exec-terminal", "src"),
+        Input("exec-container", "value"),
+        Input("exec-reconnect", "n_clicks"),
         State("selected-resource", "data"),
         prevent_initial_call=True,
     )
-    def run_exec(_clicks, _submit, command, container, selected):
-        if not selected or not command:
+    def update_terminal(container, reconnect, selected):
+        if not selected:
             raise PreventUpdate
-        try:
-            output = ops.exec_command(
-                get_clients(), selected["name"], selected["namespace"], container, command
-            )
-            return f"$ {command}\n{output}" if output else f"$ {command}\n(no output)"
-        except Exception as exc:  # noqa: BLE001
-            return f"$ {command}\nError: {exc}"
+        src = render_terminal_src(selected.get("namespace", ""), selected["name"], container)
+        # Append a nonce so "Reconnect" reloads the iframe even when the
+        # container is unchanged.
+        return f"{src}&_r={reconnect or 0}"

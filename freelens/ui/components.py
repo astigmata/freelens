@@ -5,11 +5,23 @@ The single ``render_details`` builder replaces the duplicated, hand-written
 action builders are likewise generic across resource types.
 """
 
+from urllib.parse import urlencode
+
 from dash import dcc, html
 
 from ..k8s import operations as ops
 from ..k8s.client import get_clients
 from ..k8s.registry import DetailField, ResourceDescriptor, get_object
+
+
+def terminal_src(namespace: str, pod: str, container: str | None) -> str:
+    """URL of the xterm.js terminal page for a given pod/container."""
+    if not pod:
+        return ""
+    query = {"namespace": namespace or "", "pod": pod}
+    if container:
+        query["container"] = container
+    return "/terminal?" + urlencode(query)
 
 _STATUS_CLASS = {
     "Running": "status-running",
@@ -86,8 +98,9 @@ def render_logs(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
 
 
 def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
-    """Exec console: pick a container, type a command, run it, see the output."""
+    """Interactive terminal: a real TTY shell in the pod, served via xterm.js."""
     containers = ops.list_containers(get_clients(), name, namespace)
+    default = containers[0] if containers else None
     return html.Div(
         [
             html.Div(
@@ -95,26 +108,19 @@ def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
                     dcc.Dropdown(
                         id="exec-container",
                         options=[{"label": c, "value": c} for c in containers],
-                        value=containers[0] if containers else None,
+                        value=default,
                         clearable=False,
                         className="namespace-selector",
                     ),
-                    dcc.Input(
-                        id="exec-command",
-                        type="text",
-                        placeholder="Command, e.g. ls -la /  (Enter to run)",
-                        debounce=False,
-                        n_submit=0,
-                        className="search-input exec-command",
-                    ),
-                    html.Button("Run", id="exec-run", n_clicks=0, className="action-button"),
+                    html.Button("Reconnect", id="exec-reconnect", n_clicks=0,
+                                className="action-button"),
                 ],
                 className="logs-controls",
             ),
-            html.Pre(
-                "$ run a command above…",
-                id="exec-output",
-                className="logs-view",
+            html.Iframe(
+                id="exec-terminal",
+                src=terminal_src(namespace, name, default),
+                className="exec-terminal",
             ),
         ]
     )
