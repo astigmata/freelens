@@ -17,6 +17,7 @@ Two modes (``FREELENS_AUTH_MODE``):
 import ipaddress
 import logging
 import os
+import sys
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -176,6 +177,41 @@ def register_auth(server: Flask) -> None:
                         request.method, path, request.headers.get("Origin"))
             abort(403)
         return None
+
+
+def print_startup_banner(host: str, port: int) -> None:
+    """Print a hard-to-miss banner describing the security posture at startup.
+
+    Goes to stderr (not the logger) so it stands out even when log output is
+    noisy, and shows the exact URL and whether authentication is on.
+    """
+    url = f"http://{host}:{port}"
+    if config.AUTH_MODE == "disabled":
+        scope = "loopback only" if host in ("127.0.0.1", "localhost", "::1") else host
+        lines = [
+            "FREELENS_AUTH_MODE=disabled  —  NO AUTHENTICATION",
+            "",
+            f"Serving on {url}  ({scope})",
+            "Anyone who can reach this address has FULL control of the cluster.",
+            "Local development ONLY — this is NOT HDS-compliant.",
+            "For a shared/remote deployment set FREELENS_AUTH_MODE=proxy behind",
+            "an OIDC reverse proxy (see deploy/hds/).",
+        ]
+        border_char = "!"
+    else:
+        lines = [
+            f"FREELENS_AUTH_MODE={config.AUTH_MODE}  —  authentication enforced",
+            f"Serving on {url}",
+            "Identity is taken from the trusted reverse proxy; direct access is 401.",
+        ]
+        border_char = "="
+
+    width = max(len(line) for line in lines) + 4
+    border = border_char * width
+    print(border, file=sys.stderr)
+    for line in lines:
+        print(f"{border_char} {line.ljust(width - 4)} {border_char}", file=sys.stderr)
+    print(border, file=sys.stderr, flush=True)
 
 
 def current_identity() -> Identity | None:

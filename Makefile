@@ -23,8 +23,8 @@ install: venv ## Install runtime dependencies
 dev: install ## Install runtime + development dependencies
 	$(PIP) install pytest
 
-run: ## Run the app (http://127.0.0.1:8050)
-	$(PYTHON) app.py
+run: ## Run the app locally — loopback only, NO AUTH (dev)
+	FREELENS_HOST=127.0.0.1 FREELENS_AUTH_MODE=disabled $(PYTHON) app.py
 
 test: ## Run the test suite
 	$(PYTHON) -m pytest tests/ -q

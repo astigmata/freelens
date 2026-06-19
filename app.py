@@ -6,7 +6,7 @@ import dash
 
 from freelens import config
 from freelens.audit import init_audit
-from freelens.auth import register_auth
+from freelens.auth import print_startup_banner, register_auth
 from freelens.callbacks import register_callbacks
 from freelens.security import register_security_headers
 from freelens.terminal import register_terminal
@@ -37,5 +37,6 @@ server = app.server
 
 
 if __name__ == "__main__":
+    print_startup_banner(config.HOST, config.PORT)
     # threaded=True so the terminal WebSocket runs alongside normal requests.
     app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG, threaded=True)
