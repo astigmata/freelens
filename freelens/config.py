@@ -59,3 +59,9 @@ IMPERSONATE = os.environ.get(
 # Optional file for the JSON audit trail. When empty, audit events go to stdout
 # (capture them at the platform level into an immutable sink).
 AUDIT_FILE = os.environ.get("FREELENS_AUDIT_FILE", "").strip()
+
+# Escape hatch: allow running with AUTH_MODE=disabled while bound to a non-loopback
+# address. Off by default — the app refuses such a configuration so an
+# unauthenticated instance can't be exposed on the network by accident. Only set
+# this when the network is already isolated by other means.
+ALLOW_INSECURE = os.environ.get("FREELENS_ALLOW_INSECURE", "false").lower() == "true"

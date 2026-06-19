@@ -179,6 +179,32 @@ def register_auth(server: Flask) -> None:
         return None
 
 
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", ""}
+
+
+def enforce_safe_bind(host: str) -> None:
+    """Refuse to start unauthenticated on a non-loopback address.
+
+    With ``AUTH_MODE=disabled`` and a host reachable from the network, anyone
+    could take over the cluster. Fail fast unless ``FREELENS_ALLOW_INSECURE`` is
+    explicitly set (e.g. on an already-isolated network).
+    """
+    if config.AUTH_MODE != "disabled":
+        return
+    if host in _LOOPBACK_HOSTS or config.ALLOW_INSECURE:
+        return
+    raise SystemExit(
+        f"\nRefusing to start: FREELENS_AUTH_MODE=disabled but bound to "
+        f"'{host}' (not loopback).\n"
+        "An unauthenticated instance must not be exposed on the network.\n"
+        "Fix one of:\n"
+        "  - set FREELENS_AUTH_MODE=proxy behind an OIDC reverse proxy "
+        "(see deploy/hds/), or\n"
+        "  - set FREELENS_HOST=127.0.0.1 to stay local, or\n"
+        "  - set FREELENS_ALLOW_INSECURE=true if the network is already isolated.\n"
+    )
+
+
 def print_startup_banner(host: str, port: int) -> None:
     """Print a hard-to-miss banner describing the security posture at startup.
 

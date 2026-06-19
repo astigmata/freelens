@@ -120,6 +120,33 @@ def test_get_user_clients_sets_impersonation_headers(monkeypatch):
     assert headers["Impersonate-Group"] == ["cardio", "admins"]
 
 
+# --------------------------------------------------------------------------- #
+# Guardrail: never serve unauthenticated on a network address.
+# --------------------------------------------------------------------------- #
+def test_guardrail_blocks_disabled_on_non_loopback(monkeypatch):
+    monkeypatch.setattr(config, "AUTH_MODE", "disabled")
+    monkeypatch.setattr(config, "ALLOW_INSECURE", False)
+    with pytest.raises(SystemExit):
+        auth.enforce_safe_bind("0.0.0.0")
+
+
+def test_guardrail_allows_disabled_on_loopback(monkeypatch):
+    monkeypatch.setattr(config, "AUTH_MODE", "disabled")
+    monkeypatch.setattr(config, "ALLOW_INSECURE", False)
+    auth.enforce_safe_bind("127.0.0.1")  # no raise
+
+
+def test_guardrail_escape_hatch(monkeypatch):
+    monkeypatch.setattr(config, "AUTH_MODE", "disabled")
+    monkeypatch.setattr(config, "ALLOW_INSECURE", True)
+    auth.enforce_safe_bind("0.0.0.0")  # no raise
+
+
+def test_guardrail_ignores_proxy_mode(monkeypatch):
+    monkeypatch.setattr(config, "AUTH_MODE", "proxy")
+    auth.enforce_safe_bind("0.0.0.0")  # no raise
+
+
 def test_active_clients_uses_shared_for_local(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(config, "AUTH_MODE", "disabled")

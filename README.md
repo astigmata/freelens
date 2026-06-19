@@ -67,10 +67,14 @@ writes a JSON audit trail. See [`SECURITY_AUDIT_HDS.md`](./SECURITY_AUDIT_HDS.md
 [`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md) and the ready-to-apply
 manifests in [`deploy/hds/`](./deploy/hds/).
 
+As a safety net, the app **refuses to start** in `disabled` mode when bound to a
+non-loopback address (set `FREELENS_ALLOW_INSECURE=true` to override on an
+already-isolated network).
+
 Auth-related variables: `FREELENS_AUTH_MODE` (`disabled`|`proxy`),
 `FREELENS_TRUSTED_PROXIES`, `FREELENS_HEADER_USER/EMAIL/GROUPS`,
 `FREELENS_IMPERSONATE`, `FREELENS_SECRET_KEY`, `FREELENS_ALLOWED_ORIGINS`,
-`FREELENS_AUDIT_FILE`.
+`FREELENS_AUDIT_FILE`, `FREELENS_ALLOW_INSECURE`.
 
 ## Local test cluster (KinD)
 
