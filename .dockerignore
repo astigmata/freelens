@@ -1,0 +1,30 @@
+# Keep the build context (and image) small and free of secrets / cruft.
+.git
+.gitignore
+.venv
+venv
+env
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+*.egg-info
+.idea
+.vscode
+.claude
+.DS_Store
+
+# Not needed at runtime.
+tests
+deploy
+Makefile
+README.md
+SECURITY_AUDIT_HDS.md
+SECURITY_AUTH_DESIGN.md
+Dockerfile
+.dockerignore
+
+# Local kube credentials must never enter the image.
+kubeconfig
+*.kubeconfig
+.kube

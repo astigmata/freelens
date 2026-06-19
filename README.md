@@ -76,6 +76,20 @@ Auth-related variables: `FREELENS_AUTH_MODE` (`disabled`|`proxy`),
 `FREELENS_IMPERSONATE`, `FREELENS_SECRET_KEY`, `FREELENS_ALLOWED_ORIGINS`,
 `FREELENS_AUDIT_FILE`, `FREELENS_ALLOW_INSECURE`.
 
+## Container
+
+A hardened multi-stage image is provided (non-root uid 65532, pinned +
+checksum-verified `helm`, read-only-rootfs friendly, `/healthz` healthcheck).
+The image **defaults to `FREELENS_AUTH_MODE=proxy`** — secure by default; without
+a proxy in front every request is `401`.
+
+```bash
+make docker-build                     # build freelens:latest
+make docker-run                       # local smoke test (disabled mode, loopback)
+```
+
+For a real deployment behind oauth2-proxy, see [`deploy/hds/`](./deploy/hds/).
+
 ## Local test cluster (KinD)
 
 No cluster handy? Spin up a local [KinD](https://kind.sigs.k8s.io/) cluster

@@ -6,7 +6,10 @@ PIP := $(VENV)/bin/pip
 KIND_CLUSTER := freelens-test
 KIND_CONTEXT := kind-$(KIND_CLUSTER)
 
-.PHONY: help venv install dev run test clean kind-up kind-seed kind-down
+IMAGE := freelens:latest
+
+.PHONY: help venv install dev run test clean kind-up kind-seed kind-down \
+	docker-build docker-run
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -28,6 +31,16 @@ run: ## Run the app locally — loopback only, NO AUTH (dev)
 
 test: ## Run the test suite
 	$(PYTHON) -m pytest tests/ -q
+
+docker-build: ## Build the container image
+	docker build -t $(IMAGE) .
+
+docker-run: ## Run the image locally — loopback only, NO AUTH (dev smoke)
+	docker run --rm -p 127.0.0.1:8050:8050 \
+		-e FREELENS_AUTH_MODE=disabled \
+		-e KUBECONFIG=/kube/config \
+		-v $${HOME}/.kube/config:/kube/config:ro \
+		$(IMAGE)
 
 clean: ## Remove caches and build artifacts
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +

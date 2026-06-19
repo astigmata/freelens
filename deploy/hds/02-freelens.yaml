@@ -75,6 +75,13 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits:   { cpu: "1",  memory: 512Mi }
+          # The image keeps HOME/TMPDIR on /tmp; a writable emptyDir there is all
+          # it needs to run with a read-only root filesystem.
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
