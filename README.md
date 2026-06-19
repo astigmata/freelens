@@ -53,6 +53,25 @@ Then open http://127.0.0.1:8050.
 Configuration is via environment variables (see `freelens/config.py`):
 `FREELENS_HOST`, `FREELENS_PORT`, `FREELENS_DEBUG`, `FREELENS_TABLE_PAGE_SIZE`.
 
+## Security & authentication
+
+> ⚠️ By default `FREELENS_AUTH_MODE=disabled` — **no authentication**, for local
+> development only. The app gives full control over the cluster to anyone who can
+> reach the port.
+
+For any shared, remote or **health-data (HDS)** deployment, run behind an
+authenticating OIDC reverse proxy and set `FREELENS_AUTH_MODE=proxy`. Freelens
+then requires a per-user identity, propagates it to the Kubernetes API server via
+impersonation (so RBAC and audit attribute every action to the real person), and
+writes a JSON audit trail. See [`SECURITY_AUDIT_HDS.md`](./SECURITY_AUDIT_HDS.md),
+[`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md) and the ready-to-apply
+manifests in [`deploy/hds/`](./deploy/hds/).
+
+Auth-related variables: `FREELENS_AUTH_MODE` (`disabled`|`proxy`),
+`FREELENS_TRUSTED_PROXIES`, `FREELENS_HEADER_USER/EMAIL/GROUPS`,
+`FREELENS_IMPERSONATE`, `FREELENS_SECRET_KEY`, `FREELENS_ALLOWED_ORIGINS`,
+`FREELENS_AUDIT_FILE`.
+
 ## Local test cluster (KinD)
 
 No cluster handy? Spin up a local [KinD](https://kind.sigs.k8s.io/) cluster

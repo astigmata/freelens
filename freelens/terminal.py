@@ -16,7 +16,8 @@ from flask import Flask, Response, request
 from kubernetes.stream import stream
 
 from . import config
-from .k8s.client import get_clients
+from .audit import audit
+from .auth import active_clients, current_identity
 
 log = logging.getLogger(__name__)
 
@@ -107,15 +108,23 @@ def register_terminal(server: Flask) -> bool:
             ws.send("Origin not allowed.\r\n")
             return
 
+        # Defence-in-depth: the before_request guard already requires auth, but a
+        # shell must never open without a known actor to attribute it to.
+        if current_identity() is None:
+            ws.send("Authentication required.\r\n")
+            return
+
         namespace = request.args.get("namespace", "")
         pod = request.args.get("pod", "")
         container = request.args.get("container") or None
         if not pod or not namespace:
             ws.send("Missing pod/namespace.\r\n")
             return
+
+        target = {"kind": "pods", "name": pod, "namespace": namespace}
         try:
             resp = stream(
-                get_clients().core.connect_get_namespaced_pod_exec,
+                active_clients().core.connect_get_namespaced_pod_exec,
                 pod,
                 namespace,
                 container=container,
@@ -128,9 +137,14 @@ def register_terminal(server: Flask) -> bool:
                 _preload_content=False,
             )
         except Exception as exc:  # noqa: BLE001 — surfaced into the terminal
+            audit("pod.exec.open", target, "failure", container=container, error=str(exc))
             ws.send(f"Failed to open shell: {exc}\r\n")
             return
-        _bridge(ws, resp)
+        audit("pod.exec.open", target, "success", container=container)
+        try:
+            _bridge(ws, resp)
+        finally:
+            audit("pod.exec.close", target, "success", container=container)
 
     return True
 

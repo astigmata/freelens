@@ -1,0 +1,87 @@
+# Freelens deployment, fronted in-pod by oauth2-proxy (sidecar pattern).
+#
+# Traffic path:  Ingress(TLS) ──▶ oauth2-proxy :4180 ──▶ freelens 127.0.0.1:8050
+#
+# Because oauth2-proxy talks to the app over loopback, the app trusts identity
+# headers only from 127.0.0.1 (FREELENS_TRUSTED_PROXIES), so they cannot be
+# spoofed from outside the pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freelens
+  namespace: freelens
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: freelens }
+  template:
+    metadata:
+      labels: { app: freelens }
+    spec:
+      serviceAccountName: freelens
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        # ---------------------------------------------------------------- #
+        # 1) Authenticating reverse proxy (OIDC).
+        # ---------------------------------------------------------------- #
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+          args:
+            - --http-address=0.0.0.0:4180
+            - --upstream=http://127.0.0.1:8050
+            - --provider=oidc
+            - --oidc-issuer-url=$(OIDC_ISSUER_URL)
+            - --email-domain=*
+            - --scope=openid email profile groups
+            # Forward the identity to the upstream as the headers Freelens reads.
+            - --pass-user-headers=true
+            - --set-xauthrequest=true
+            - --pass-access-token=false
+            # Map the OIDC "preferred_username"/"groups" into the headers.
+            - --oidc-groups-claim=groups
+            - --cookie-secure=true
+            - --cookie-samesite=strict
+          envFrom:
+            - secretRef: { name: oauth2-proxy }   # CLIENT_ID/SECRET/COOKIE_SECRET/ISSUER
+          ports:
+            - { name: https-proxy, containerPort: 4180 }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+        # ---------------------------------------------------------------- #
+        # 2) Freelens — bound to loopback, auth in proxy mode.
+        # ---------------------------------------------------------------- #
+        - name: freelens
+          image: freelens:latest          # build & push your own image
+          command: ["gunicorn", "-b", "127.0.0.1:8050", "-k", "gthread",
+                    "--threads", "8", "app:server"]
+          env:
+            - { name: FREELENS_AUTH_MODE,      value: "proxy" }
+            - { name: FREELENS_TRUSTED_PROXIES, value: "127.0.0.1" }
+            - { name: FREELENS_IMPERSONATE,    value: "true" }
+            - { name: FREELENS_DEBUG,          value: "false" }
+            # Audit trail to stdout → collected into your immutable SIEM sink.
+            - { name: FREELENS_AUDIT_FILE,     value: "" }
+            - name: FREELENS_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: freelens, key: secret-key } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 65532
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { cpu: "1",  memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freelens
+  namespace: freelens
+spec:
+  selector: { app: freelens }
+  ports:
+    - { name: https-proxy, port: 443, targetPort: 4180 }

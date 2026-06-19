@@ -36,22 +36,46 @@ def _load_config() -> None:
         log.info("Loaded local kubeconfig")
 
 
-@lru_cache(maxsize=1)
-def get_clients() -> Clients:
-    """Return cached Kubernetes API clients."""
-    _load_config()
+def _clients_from_api(api: client.ApiClient) -> Clients:
     return Clients(
-        core=client.CoreV1Api(),
-        apps=client.AppsV1Api(),
-        batch=client.BatchV1Api(),
-        apiext=client.ApiextensionsV1Api(),
-        custom=client.CustomObjectsApi(),
+        core=client.CoreV1Api(api),
+        apps=client.AppsV1Api(api),
+        batch=client.BatchV1Api(api),
+        apiext=client.ApiextensionsV1Api(api),
+        custom=client.CustomObjectsApi(api),
     )
 
 
-def get_namespaces() -> list[str]:
+@lru_cache(maxsize=1)
+def get_clients() -> Clients:
+    """Return cached Kubernetes API clients for the app's own identity."""
+    _load_config()
+    return _clients_from_api(client.ApiClient())
+
+
+@lru_cache(maxsize=64)
+def get_user_clients(user: str, groups: tuple[str, ...] = ()) -> Clients:
+    """Return clients that impersonate ``user`` (and ``groups``) at the API server.
+
+    The API server then enforces that user's RBAC and records the real actor in
+    its audit log, giving end-to-end imputability. The app's ServiceAccount must
+    hold the ``impersonate`` verb on users (and groups). Cached per identity so
+    repeated calls in a session don't rebuild the client.
+    """
+    _load_config()
+    cfg = client.Configuration.get_default_copy()
+    api = client.ApiClient(cfg)
+    api.set_default_header("Impersonate-User", user)
+    # The kubernetes client maps a list value to repeated headers, which is how
+    # multiple Impersonate-Group values are sent.
+    if groups:
+        api.set_default_header("Impersonate-Group", list(groups))
+    return _clients_from_api(api)
+
+
+def get_namespaces(clients: "Clients | None" = None) -> list[str]:
     """List all namespace names in the cluster."""
-    clients = get_clients()
+    clients = clients or get_clients()
     return [ns.metadata.name for ns in clients.core.list_namespace().items]
 
 

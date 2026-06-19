@@ -5,6 +5,8 @@ import logging
 import dash
 
 from freelens import config
+from freelens.audit import init_audit
+from freelens.auth import register_auth
 from freelens.callbacks import register_callbacks
 from freelens.security import register_security_headers
 from freelens.terminal import register_terminal
@@ -21,6 +23,10 @@ app = dash.Dash(
 )
 app.layout = create_layout()
 register_callbacks(app)
+# Structured, immutable audit trail.
+init_audit()
+# Authentication + identity propagation + CSRF guard on every request.
+register_auth(app.server)
 # Defence-in-depth HTTP headers on every response.
 register_security_headers(app.server)
 # Interactive pod terminal (xterm.js <-> WebSocket <-> pod exec stream).

@@ -1,0 +1,51 @@
+# TLS termination in front of the pod. Encryption in transit is mandatory for
+# health data (HDS / PGSSI-S). Adjust the ingress class and TLS secret to your
+# platform (cert-manager recommended for automated certificate rotation).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: freelens
+  namespace: freelens
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # Force HTTPS and HSTS at the edge.
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # keep exec sockets open
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["freelens.chu.example.fr"]
+      secretName: freelens-tls
+  rules:
+    - host: freelens.chu.example.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: freelens
+                port: { number: 443 }
+---
+# Placeholder secrets — populate from your secret manager / vault, never commit.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-proxy
+  namespace: freelens
+type: Opaque
+stringData:
+  OAUTH2_PROXY_CLIENT_ID: "REPLACE_ME"
+  OAUTH2_PROXY_CLIENT_SECRET: "REPLACE_ME"
+  OAUTH2_PROXY_COOKIE_SECRET: "REPLACE_ME_32_BYTES_BASE64"
+  OIDC_ISSUER_URL: "https://keycloak.chu.example.fr/realms/hospital"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: freelens
+  namespace: freelens
+type: Opaque
+stringData:
+  secret-key: "REPLACE_ME_RANDOM_32_BYTES"

@@ -5,8 +5,9 @@ import logging
 from dash import Dash, Input, Output, State, dcc, html
 from dash.exceptions import PreventUpdate
 
+from ..auth import active_clients
+from ..audit import audit
 from ..k8s import operations as ops
-from ..k8s.client import get_clients
 from ..k8s.registry import get_object, resource_from_path
 from ..ui.components import (
     details_placeholder,
@@ -72,6 +73,11 @@ def register(app: Dash) -> None:
         name, namespace = selected["name"], selected.get("namespace", "")
         try:
             if tab == "yaml":
+                # Reading a Secret's manifest is sensitive even though values are
+                # redacted — record who looked at which Secret.
+                if descriptor.key == "secrets":
+                    audit("secret.read",
+                          {"kind": "secrets", "name": name, "namespace": namespace})
                 return render_yaml(descriptor, name, namespace)
             if tab == "logs":
                 if not descriptor.supports_logs:
@@ -81,7 +87,9 @@ def register(app: Dash) -> None:
                 if not descriptor.supports_exec:
                     return html.Div("Exec is not available for this resource type.")
                 return render_exec(descriptor, name, namespace)
-            return render_details(descriptor, get_object(descriptor, name, namespace))
+            return render_details(
+                descriptor, get_object(descriptor, name, namespace, active_clients())
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not render %s for %s: %s", tab, name, exc)
             return html.Div(
@@ -101,7 +109,7 @@ def register(app: Dash) -> None:
             raise PreventUpdate
         try:
             logs = ops.pod_logs(
-                get_clients(), selected["name"], selected["namespace"], container
+                active_clients(), selected["name"], selected["namespace"], container
             )
             return _filter_lines(logs, log_filter) or "(no logs)"
         except Exception as exc:  # noqa: BLE001
@@ -120,9 +128,12 @@ def register(app: Dash) -> None:
         if not n_clicks or not selected or not container:
             raise PreventUpdate
         logs = ops.pod_logs(
-            get_clients(), selected["name"], selected["namespace"], container
+            active_clients(), selected["name"], selected["namespace"], container
         )
         logs = _filter_lines(logs, log_filter)
+        audit("pod.logs.download",
+              {"kind": "pods", "name": selected["name"],
+               "namespace": selected.get("namespace", "")}, container=container)
         filename = f"{selected['name']}_{container}.log"
         return dcc.send_string(logs, filename)
 

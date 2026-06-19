@@ -86,10 +86,12 @@ class ResourceDescriptor:
 # --------------------------------------------------------------------------- #
 # Generic data access (replaces the per-resource get_* functions).
 # --------------------------------------------------------------------------- #
-def list_rows(descriptor: ResourceDescriptor, namespace: str) -> tuple[list[dict], str]:
+def list_rows(
+    descriptor: ResourceDescriptor, namespace: str, clients: Clients | None = None
+) -> tuple[list[dict], str]:
     """Return table rows for a resource, plus a connection-status message."""
     try:
-        clients = get_clients()
+        clients = clients or get_clients()
         objs = descriptor.list_fn(clients, namespace)
         rows = [
             {col.id: str(col.accessor(obj)) for col in descriptor.columns}
@@ -98,11 +100,13 @@ def list_rows(descriptor: ResourceDescriptor, namespace: str) -> tuple[list[dict
         return rows, "Connected"
     except Exception as exc:  # noqa: BLE001 — surfaced to the user
         log.warning("Could not list %s: %s", descriptor.key, exc)
-        return [], f"Error: {exc}"
+        return [], "Error"
 
 
-def get_object(descriptor: ResourceDescriptor, name: str, namespace: str) -> Any:
-    return descriptor.get_fn(get_clients(), name, namespace or "")
+def get_object(
+    descriptor: ResourceDescriptor, name: str, namespace: str, clients: Clients | None = None
+) -> Any:
+    return descriptor.get_fn(clients or get_clients(), name, namespace or "")
 
 
 # --------------------------------------------------------------------------- #

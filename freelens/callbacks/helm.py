@@ -19,6 +19,7 @@ from ..ui.components import (
     render_helm_manifest,
     render_helm_values,
 )
+from ..audit import audit
 
 log = logging.getLogger(__name__)
 
@@ -123,9 +124,15 @@ def register(app: Dash) -> None:
                 create_namespace="yes" in (createns or []),
                 repo_url=(repo or "").strip(),
             )
+            audit("helm.install",
+                  {"name": release.strip(), "namespace": (namespace or "default").strip()},
+                  "success", chart=chart.strip(), repo=(repo or "").strip())
             result = f"✓ Installed '{release}' from '{chart}'"
             return result, (trigger or 0) + 1
         except helm.HelmError as exc:
+            audit("helm.install",
+                  {"name": (release or "").strip(), "namespace": (namespace or "default").strip()},
+                  "failure", chart=(chart or "").strip(), error=str(exc))
             return f"✗ Install failed: {exc}", trigger or 0
 
     @app.callback(
@@ -207,14 +214,19 @@ def register(app: Dash) -> None:
         if not submit_n_clicks or not pending:
             raise PreventUpdate
         name, namespace = pending["name"], pending["namespace"]
+        target = {"name": name, "namespace": namespace}
         try:
             if pending["action"] == "rollback":
                 helm.rollback(name, namespace, pending.get("revision") or "")
+                audit("helm.rollback", target, "success",
+                      revision=pending.get("revision") or "previous")
                 # Keep the selection: the release still exists post-rollback.
                 return f"✓ Rolled back '{name}'", (trigger or 0) + 1, no_update
             helm.uninstall(name, namespace)
+            audit("helm.uninstall", target, "success")
             # Clear the selection so the detail panel doesn't reload a dead release.
             return f"✓ Uninstalled '{name}'", (trigger or 0) + 1, None
         except helm.HelmError as exc:
             log.warning("Helm %s failed: %s", pending["action"], exc)
+            audit(f"helm.{pending['action']}", target, "failure", error=str(exc))
             return f"✗ {pending['action'].title()} failed: {exc}", trigger or 0, no_update

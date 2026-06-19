@@ -28,12 +28,31 @@ def available() -> bool:
     return shutil.which(HELM_BIN) is not None
 
 
+def _impersonation_flags() -> list[str]:
+    """Global helm flags to run as the authenticated user, for imputability.
+
+    Mirrors the API-server impersonation used by the Kubernetes client so helm
+    actions are attributed to the real person, not the app's ServiceAccount.
+    Imported lazily to avoid a circular import with the auth layer.
+    """
+    from .. import config
+    from ..auth import current_identity
+
+    identity = current_identity()
+    if not (config.IMPERSONATE and identity and not identity.is_local):
+        return []
+    flags = ["--kube-as-user", identity.user]
+    for group in identity.groups:
+        flags += ["--kube-as-group", group]
+    return flags
+
+
 def _run(args: list[str], *, as_json: bool = False, stdin: str | None = None):
     if not available():
         raise HelmError("The 'helm' CLI was not found on PATH.")
     try:
         proc = subprocess.run(  # noqa: S603 — args are app-controlled
-            [HELM_BIN, *args],
+            [HELM_BIN, *_impersonation_flags(), *args],
             capture_output=True,
             text=True,
             timeout=_TIMEOUT,

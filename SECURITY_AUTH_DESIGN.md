@@ -1,5 +1,12 @@
 # Conception — Authentification, imputabilité et audit (cap HDS)
 
+> **Statut : implémenté.** Cette conception est désormais réalisée dans le code
+> (`freelens/auth.py`, `freelens/audit.py`, impersonation dans
+> `freelens/k8s/client.py` + `helm.py`) et déployable via
+> [`deploy/hds/`](./deploy/hds/). Le mode `proxy` correspond à l'option
+> recommandée ci-dessous. Ce document reste la référence de conception.
+
+
 > Document de conception répondant aux constats **C1** (authentification),
 > **C2** (imputabilité), **M1** (audit) et **H3/CSRF** de
 > [`SECURITY_AUDIT_HDS.md`](./SECURITY_AUDIT_HDS.md). Objectif : qu'un usage avec

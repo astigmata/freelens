@@ -19,24 +19,36 @@ certification formel.
 
 ## Verdict
 
-🔴 **En l'état, Freelens ne peut pas être utilisé dans un cadre HDS** pour
-manipuler des données de santé. Quatre manques sont **rédhibitoires** :
+> **Mise à jour (implémentation).** Les fondations manquantes ont été
+> implémentées : authentification (mode `proxy` OIDC), imputabilité par
+> impersonation Kubernetes, journal d'audit JSON, durcissement (CSRF, en-têtes,
+> redaction Secrets, CSP, assets locaux). Voir « Synthèse des correctifs ».
+> **Sous réserve d'un déploiement conforme** (`FREELENS_AUTH_MODE=proxy` derrière
+> un proxy OIDC + TLS, RBAC par utilisateur, export du journal vers un puits
+> immuable, hébergement HDS-certifié — cf. [`deploy/hds/`](./deploy/hds/)), les
+> blocages applicatifs sont levés.
 
-1. **Aucune authentification** — accès anonyme total.
-2. **Aucune imputabilité** — identité unique partagée, impossible de tracer *qui*.
-3. **Aucun chiffrement en transit** — HTTP / `ws://` en clair.
-4. **Aucune journalisation d'audit** exploitable.
+**Constat initial** — 🔴 en l'état du code audité, Freelens ne pouvait pas être
+utilisé en cadre HDS. Quatre manques rédhibitoires, désormais traités :
 
-Ce ne sont pas des bugs ponctuels mais des fondations absentes. Une feuille de
-route est proposée en fin de document ; la conception de l'authentification et de
-l'imputabilité fait l'objet d'un document dédié :
-[`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md).
+1. **Aucune authentification** → ✅ mode `proxy` (OIDC) + garde 401. *(C1)*
+2. **Aucune imputabilité** → ✅ impersonation Kubernetes par utilisateur. *(C2)*
+3. **Aucun chiffrement en transit** → ⚙️ à assurer au déploiement (TLS/HSTS,
+   manifests fournis). *(H2)*
+4. **Aucune journalisation d'audit** → ✅ trail JSON structuré. *(M1)*
+
+La conception détaillée est dans [`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md) ;
+le déploiement de référence dans [`deploy/hds/`](./deploy/hds/).
 
 ---
 
 ## Constats critiques 🔴
 
-### C1 — Aucune authentification ni autorisation : contrôle total anonyme
+> ✅ **C1, C2 et C3 sont corrigés** par la couche auth/impersonation (mode
+> `proxy`). Description initiale conservée ci-dessous pour la traçabilité de
+> l'audit.
+
+### C1 — Aucune authentification ni autorisation : contrôle total anonyme ✅ *corrigé*
 Aucune couche d'auth nulle part (`app.py`, `freelens/terminal.py`, tous les
 callbacks). Toute personne atteignant `FREELENS_HOST:PORT` obtient **sans
 identification** : un shell interactif dans n'importe quel pod (`/ws/exec`), la
@@ -46,14 +58,14 @@ et la lecture de toutes les ressources. Le défaut `HOST=127.0.0.1`
 (`config.py`) ne protège qu'en local ; tout déploiement réel
 (`0.0.0.0`, `gunicorn`, Ingress) ouvre l'accès.
 
-### C2 — Identité unique partagée → aucune imputabilité
+### C2 — Identité unique partagée → aucune imputabilité ✅ *corrigé*
 `freelens/k8s/client.py` charge **un seul** kubeconfig / ServiceAccount in-cluster
 (`_load_config`, `lru_cache`). **Toutes** les actions de **tous** les utilisateurs
 passent par cette identité unique → impossible de savoir **qui** a consulté ou
 modifié une donnée. La traçabilité/imputabilité est une exigence centrale
 HDS/CNIL pour les données de santé : ce point seul est disqualifiant.
 
-### C3 — Shell root non restreint dans tout pod
+### C3 — Shell root non restreint dans tout pod ✅ *corrigé (auth + impersonation + audit)*
 `terminal.py` ouvre `connect_get_namespaced_pod_exec` avec `/bin/bash`, sur
 n'importe quel namespace/pod fourni en query string. Accès direct aux données de
 santé de n'importe quel conteneur, avec les privilèges du conteneur (souvent
@@ -95,9 +107,11 @@ et styles *self*, sockets same-origin).
 
 ## Constats moyens 🟡
 
-- **M1 — Pas de journal d'audit.** Seuls des `log.warning` sur échec, sans
-  acteur ni trace des succès, sans journal immuable. *Voir
-  `SECURITY_AUTH_DESIGN.md`.*
+- **M1 — Pas de journal d'audit.** ✅ *corrigé* : `freelens/audit.py` émet un
+  événement JSON (acteur, IP source, action, cible, résultat, horodatage) par
+  action sensible (delete/scale/restart, exec open/close, lecture de Secret, logs,
+  download, helm). Logger dédié, à exporter vers un puits immuable
+  (`FREELENS_AUDIT_FILE` ou stdout).
 - **M2 — Fuite d'informations par messages d'erreur bruts.** ✅ *corrigé* :
   les `f"Error: {exc}"` exposant les `ApiException` (URL de l'API server,
   en-têtes) sont remplacés par des messages génériques côté UI, le détail restant
@@ -142,26 +156,44 @@ et styles *self*, sockets same-origin).
 
 | Réf. | Correctif | Fichiers |
 |------|-----------|----------|
+| C1 | Authentification (mode `proxy` OIDC) : garde `before_request`, 401 anonyme, `/healthz` public | `freelens/auth.py`, `app.py`, `freelens/config.py` |
+| C2 | Imputabilité : impersonation Kubernetes par utilisateur (`Impersonate-User/-Group`), helm `--kube-as-user` | `freelens/k8s/client.py`, `freelens/k8s/helm.py`, callbacks |
+| C3 | Exec authentifié + impersonné + audité | `freelens/terminal.py` |
+| M1 | Journal d'audit JSON structuré (logger dédié) | `freelens/audit.py` + instrumentation |
 | H1 | Redaction des valeurs de Secrets dans le YAML | `freelens/k8s/operations.py` |
-| H3 | Contrôle d'`Origin` sur `/ws/exec` (anti-CSWSH) | `freelens/terminal.py`, `freelens/config.py` |
+| H3 | Contrôle d'`Origin` sur `/ws/exec` (anti-CSWSH) + CSRF/`Origin` sur les requêtes mutantes + `secret_key`/cookie `SameSite` | `freelens/terminal.py`, `freelens/auth.py`, `freelens/config.py` |
 | H4 | Assets xterm vendorisés localement + CSP page terminal | `freelens/terminal.py`, `assets/vendor/` |
-| B2 | En-têtes de sécurité HTTP globaux | `freelens/security.py`, `app.py` |
-| M2 | Messages d'erreur génériques côté UI | `freelens/callbacks/details.py`, `crd.py` |
+| B2 | En-têtes de sécurité HTTP globaux + `sandbox` sur l'iframe terminal | `freelens/security.py`, `app.py`, `freelens/ui/components.py` |
+| M2 | Messages d'erreur génériques côté UI | `freelens/callbacks/details.py`, `crd.py`, `freelens/k8s/registry.py` |
 
-Tests associés : `tests/test_security.py` (suite complète verte).
+Déploiement de référence : [`deploy/hds/`](./deploy/hds/) (oauth2-proxy + RBAC
+impersonation + TLS, conteneurs durcis).
 
-## Feuille de route de remédiation (par priorité)
+Tests associés : `tests/test_security.py`, `tests/test_auth.py` (suite complète
+verte).
 
-1. **Authentification** devant toute l'app, incluant `/terminal` et `/ws/exec`
-   (OIDC/SSO, idéalement MFA). → C1
-2. **Imputabilité** : propager l'identité utilisateur, idéalement via
-   **impersonation Kubernetes** ou token OIDC par utilisateur. → C2
-3. **Journal d'audit** applicatif immuable (acteur + action + cible + horodatage
-   + résultat). → M1
-4. **TLS obligatoire** (reverse-proxy + HSTS + redirection). → H2
-5. **CSRF + `secret_key` Flask** sur les callbacks. → H3
-6. **Moindre privilège** : RBAC minimal documenté, idéalement par namespace. → M5
-7. Rate limiting, `sandbox` sur l'iframe, interdiction du debug en prod, contrôle
-   des téléchargements de logs. → B1, B3, M4
+## Feuille de route de remédiation
 
-Les points 1–3 et 5 sont conçus dans [`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md).
+**Implémenté dans le code :**
+
+1. ✅ **Authentification** devant toute l'app, incluant `/terminal` et `/ws/exec`
+   (mode `proxy` OIDC). → C1
+2. ✅ **Imputabilité** par impersonation Kubernetes par utilisateur (+ helm
+   `--kube-as-user`). → C2
+3. ✅ **Journal d'audit** applicatif (acteur + action + cible + horodatage +
+   résultat). → M1
+4. ✅ **CSRF + `secret_key` Flask + cookie `SameSite`** sur les requêtes mutantes.
+   → H3
+5. ✅ **Moindre privilège** : SA app limité au verbe `impersonate`, RBAC par
+   utilisateur (exemple fourni). → M5
+6. ✅ `sandbox` sur l'iframe terminal ; interdiction du debug documentée. → B2, M4
+
+**À assurer au déploiement / exploitation (manifests fournis dans `deploy/hds/`) :**
+
+7. ⚙️ **TLS obligatoire** (reverse-proxy + HSTS + redirection). → H2
+8. ⚙️ **Export du journal d'audit** vers un puits immuable avec rétention. → M1
+9. ⚙️ **Rate limiting / WAF** au niveau de l'Ingress. → B3
+10. ⚙️ **Hébergement HDS-certifié**, MFA au niveau de l'IdP, audit log de l'API
+    server activé.
+
+Conception détaillée : [`SECURITY_AUTH_DESIGN.md`](./SECURITY_AUTH_DESIGN.md).

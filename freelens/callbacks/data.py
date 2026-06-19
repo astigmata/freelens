@@ -10,6 +10,7 @@ import logging
 from dash import Dash, Input, Output
 from dash.exceptions import PreventUpdate
 
+from ..auth import active_clients
 from ..k8s.client import current_context, get_namespaces
 from ..k8s.registry import list_rows, resource_from_path
 
@@ -27,7 +28,9 @@ def register(app: Dash) -> None:
         context_label = f"Context: {context}" if context else "In-cluster / no context"
         options = [{"label": "All namespaces", "value": "all"}]
         try:
-            options.extend({"label": ns, "value": ns} for ns in get_namespaces())
+            options.extend(
+                {"label": ns, "value": ns} for ns in get_namespaces(active_clients())
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not list namespaces: %s", exc)
         return options, context_label
@@ -56,7 +59,7 @@ def register(app: Dash) -> None:
         if (pathname or "") in ("/helm", "/crd"):
             raise PreventUpdate
         descriptor = resource_from_path(pathname)
-        rows, status = list_rows(descriptor, namespace or "all")
+        rows, status = list_rows(descriptor, namespace or "all", active_clients())
         if search:
             term = search.lower()
             rows = [row for row in rows if term in row.get("name", "").lower()]

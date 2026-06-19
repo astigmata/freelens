@@ -10,7 +10,8 @@ import logging
 from dash import Dash, Input, Output, State
 from dash.exceptions import PreventUpdate
 
-from ..k8s.client import get_clients
+from ..auth import active_clients
+from ..audit import audit
 from ..k8s.registry import resource_from_path
 
 log = logging.getLogger(__name__)
@@ -74,14 +75,21 @@ def register(app: Dash) -> None:
         if descriptor.delete_fn is None:
             raise PreventUpdate
 
-        clients = get_clients()
+        clients = active_clients()
         ok, failures = 0, []
         for target in pending["targets"]:
             try:
                 descriptor.delete_fn(clients, target["name"], target["namespace"])
+                audit(f"{descriptor.key}.delete",
+                      {"kind": descriptor.key, "name": target["name"],
+                       "namespace": target["namespace"]}, "success", bulk=True)
                 ok += 1
             except Exception as exc:  # noqa: BLE001 — collected and surfaced
                 log.warning("Bulk delete of %s failed: %s", target["name"], exc)
+                audit(f"{descriptor.key}.delete",
+                      {"kind": descriptor.key, "name": target["name"],
+                       "namespace": target["namespace"]}, "failure",
+                      bulk=True, error=str(exc))
                 failures.append(f"{target['name']}: {exc}")
 
         result = f"✓ Deleted {ok}"

@@ -9,7 +9,8 @@ import logging
 from dash import ALL, Dash, Input, Output, State, ctx
 from dash.exceptions import PreventUpdate
 
-from ..k8s.client import get_clients
+from ..auth import active_clients
+from ..audit import audit
 from ..k8s.registry import resource_from_path
 
 log = logging.getLogger(__name__)
@@ -72,13 +73,18 @@ def register(app: Dash) -> None:
         if action is None:
             raise PreventUpdate
 
+        target = {"kind": descriptor.key, "name": pending["name"],
+                  "namespace": pending["namespace"]}
         try:
             action.fn(
-                get_clients(), pending["name"], pending["namespace"], pending["value"]
+                active_clients(), pending["name"], pending["namespace"], pending["value"]
             )
+            audit(f"{descriptor.key}.{action.key}", target, "success",
+                  value=pending.get("value"))
             result = f"✓ {action.label} '{pending['name']}' succeeded"
         except Exception as exc:  # noqa: BLE001
             log.warning("Action %s failed: %s", action.key, exc)
+            audit(f"{descriptor.key}.{action.key}", target, "failure", error=str(exc))
             result = f"✗ {action.label} failed: {exc}"
 
         return result, (trigger or 0) + 1

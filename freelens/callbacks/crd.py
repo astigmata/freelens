@@ -11,9 +11,10 @@ import logging
 from dash import Dash, Input, Output, State, html
 from dash.exceptions import PreventUpdate
 
+from ..auth import active_clients
+from ..audit import audit
 from ..k8s import crd
 from ..k8s import operations as ops
-from ..k8s.client import get_clients
 from ..ui.layout import CRD_COLUMNS
 
 log = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def register(app: Dash) -> None:
         if (pathname or "") != CRD_PATH:
             raise PreventUpdate
         try:
-            crds = crd.list_crds(get_clients())
+            crds = crd.list_crds(active_clients())
         except Exception as exc:  # noqa: BLE001 — surfaced as an empty dropdown
             log.warning("Could not list CRDs: %s", exc)
             return []
@@ -64,7 +65,7 @@ def register(app: Dash) -> None:
 
         try:
             items = crd.list_instances(
-                get_clients(), meta["group"], meta["version"],
+                active_clients(), meta["group"], meta["version"],
                 meta["plural"], meta["namespaced"],
             )
         except Exception as exc:  # noqa: BLE001
@@ -100,9 +101,12 @@ def register(app: Dash) -> None:
         meta = json.loads(value)
         try:
             obj = crd.get_instance(
-                get_clients(), meta["group"], meta["version"], meta["plural"],
+                active_clients(), meta["group"], meta["version"], meta["plural"],
                 meta["namespaced"], selected.get("namespace", ""), selected["name"],
             )
+            audit("customresource.read",
+                  {"kind": meta.get("kind"), "name": selected["name"],
+                   "namespace": selected.get("namespace", "")})
             return html.Pre(ops.to_yaml(obj), className="yaml-view")
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not read custom resource %s: %s", selected["name"], exc)

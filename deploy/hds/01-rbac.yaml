@@ -1,0 +1,52 @@
+# RBAC for Freelens running in proxy/impersonation mode.
+#
+# The app's ServiceAccount is deliberately UNPRIVILEGED on real resources: it can
+# only *impersonate* the authenticated user. The user's own RBAC (bound to their
+# OIDC user/groups) then decides what they may actually do — so the Kubernetes API
+# server enforces least privilege and records the real actor in its audit log.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: freelens
+  namespace: freelens
+---
+# Allow the app to impersonate users and groups — and nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: freelens-impersonator
+rules:
+  - apiGroups: [""]
+    resources: ["users", "groups"]
+    verbs: ["impersonate"]
+  # Optional: restrict which users/groups may be impersonated by name with
+  # resourceNames, e.g. only members of the OIDC group "freelens-users".
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: freelens-impersonator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: freelens-impersonator
+subjects:
+  - kind: ServiceAccount
+    name: freelens
+    namespace: freelens
+---
+# EXAMPLE end-user RBAC. Bind real cluster permissions to your OIDC groups, not
+# to the app. Adjust to your data-segregation policy (here: read-only cluster-wide
+# for the "freelens-viewers" group). Create stronger roles per team/namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: freelens-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view            # built-in read-only ClusterRole
+subjects:
+  - kind: Group
+    name: freelens-viewers   # an OIDC group claim forwarded by oauth2-proxy
+    apiGroup: rbac.authorization.k8s.io

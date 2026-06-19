@@ -9,8 +9,8 @@ from urllib.parse import urlencode
 
 from dash import dcc, html
 
+from ..auth import active_clients
 from ..k8s import operations as ops
-from ..k8s.client import get_clients
 from ..k8s.registry import DetailField, ResourceDescriptor, get_object
 
 
@@ -61,13 +61,13 @@ def render_details(descriptor: ResourceDescriptor, obj) -> html.Div:
 
 
 def render_yaml(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Pre:
-    obj = get_object(descriptor, name, namespace)
+    obj = get_object(descriptor, name, namespace, active_clients())
     return html.Pre(ops.to_yaml(obj), className="yaml-view")
 
 
 def render_logs(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
     """Logs tab: container selector, line filter, reload + download, output pane."""
-    containers = ops.list_containers(get_clients(), name, namespace)
+    containers = ops.list_containers(active_clients(), name, namespace)
     return html.Div(
         [
             html.Div(
@@ -99,7 +99,7 @@ def render_logs(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
 
 def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
     """Interactive terminal: a real TTY shell in the pod, served via xterm.js."""
-    containers = ops.list_containers(get_clients(), name, namespace)
+    containers = ops.list_containers(active_clients(), name, namespace)
     default = containers[0] if containers else None
     return html.Div(
         [
@@ -121,6 +121,10 @@ def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
                 id="exec-terminal",
                 src=terminal_src(namespace, name, default),
                 className="exec-terminal",
+                # Confine the terminal page: scripts run (xterm needs them) and
+                # same-origin is required for the WebSocket, but forms, popups and
+                # top-level navigation are blocked.
+                sandbox="allow-scripts allow-same-origin",
             ),
         ]
     )
