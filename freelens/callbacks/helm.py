@@ -7,7 +7,7 @@ Kubernetes API, so it lives in its own module rather than the registry.
 
 import logging
 
-from dash import ALL, Dash, Input, Output, State, ctx, html
+from dash import ALL, Dash, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 
 from ..k8s import helm
@@ -113,19 +113,24 @@ def register(app: Dash) -> None:
 
     @app.callback(
         Output("helm-selected", "data"),
-        Output("helm-detail-actions", "children"),
         Input("helm-table", "active_cell"),
         State("helm-table", "derived_viewport_data"),
     )
     def select_release(active_cell, viewport):
         if not active_cell or not viewport:
-            return None, []
+            return None
         try:
             row = viewport[active_cell["row"]]
         except (IndexError, KeyError):
-            return None, []
-        selected = {"name": row.get("name"), "namespace": row.get("namespace", "")}
-        return selected, render_helm_actions(selected)
+            return None
+        return {"name": row.get("name"), "namespace": row.get("namespace", "")}
+
+    @app.callback(
+        Output("helm-detail-actions", "children"),
+        Input("helm-selected", "data"),
+    )
+    def render_helm_action_bar(selected):
+        return render_helm_actions(selected) if selected else []
 
     @app.callback(
         Output("helm-detail-body", "children"),
@@ -175,6 +180,7 @@ def register(app: Dash) -> None:
     @app.callback(
         Output("helm-action-result", "children"),
         Output("helm-refresh-trigger", "data", allow_duplicate=True),
+        Output("helm-selected", "data", allow_duplicate=True),
         Input("helm-confirm", "submit_n_clicks"),
         State("helm-pending", "data"),
         State("helm-refresh-trigger", "data"),
@@ -187,11 +193,11 @@ def register(app: Dash) -> None:
         try:
             if pending["action"] == "rollback":
                 helm.rollback(name, namespace, pending.get("revision") or "")
-                result = f"✓ Rolled back '{name}'"
-            else:
-                helm.uninstall(name, namespace)
-                result = f"✓ Uninstalled '{name}'"
-            return result, (trigger or 0) + 1
+                # Keep the selection: the release still exists post-rollback.
+                return f"✓ Rolled back '{name}'", (trigger or 0) + 1, no_update
+            helm.uninstall(name, namespace)
+            # Clear the selection so the detail panel doesn't reload a dead release.
+            return f"✓ Uninstalled '{name}'", (trigger or 0) + 1, None
         except helm.HelmError as exc:
             log.warning("Helm %s failed: %s", pending["action"], exc)
-            return f"✗ {pending['action'].title()} failed: {exc}", trigger or 0
+            return f"✗ {pending['action'].title()} failed: {exc}", trigger or 0, no_update
