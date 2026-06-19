@@ -1,38 +1,22 @@
+"""Freelens — application entry point."""
+
+import logging
+
 import dash
-from dash import html
-from layout import create_layout
-from callbacks import register_callbacks
 
-# Initialisation de l'application Dash
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+from freelens import config
+from freelens.callbacks import register_callbacks
+from freelens.ui.layout import create_layout
 
-# Création de la mise en page
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+app = dash.Dash(__name__, suppress_callback_exceptions=True, title="Kubernetes Explorer")
 app.layout = create_layout()
-
-# Enregistrement des callbacks
 register_callbacks(app)
 
-# CSS personnalisé pour l'application
-app.index_string = '''
-<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>Kubernetes Explorer</title>
-        {%favicon%}
-        {%css%}
-        <link rel="stylesheet" href="assets/styles.css">
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>
-'''
+# Exposed for WSGI servers (e.g. gunicorn freelens app:server).
+server = app.server
 
-if __name__ == '__main__':
-    app.run(debug=False, port=8050)
+
+if __name__ == "__main__":
+    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
