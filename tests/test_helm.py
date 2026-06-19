@@ -77,6 +77,17 @@ def test_install_with_repo_url_uses_repo_flag(fake_helm):
     assert cmd[i + 1] == "https://metallb.github.io/metallb"
 
 
+def test_install_with_repo_url_strips_chart_prefix(fake_helm):
+    fake_helm.stdout_value = "deployed"
+    # A "repo/chart" prefix is tolerated when --repo is given: helm wants the
+    # bare chart name, so only "metallb" should be passed as the chart argument.
+    helm.install("metallb", "metallb/metallb", "metallb-system",
+                 repo_url="https://metallb.github.io/metallb")
+    cmd = fake_helm[0].cmd
+    assert cmd[:4] == ["helm", "install", "metallb", "metallb"]
+    assert "metallb/metallb" not in cmd
+
+
 def test_install_without_values_has_no_stdin(fake_helm):
     fake_helm.stdout_value = "deployed"
     helm.install("rel", "repo/chart", "ns")

@@ -105,6 +105,10 @@ def install(
     When ``repo_url`` is given, ``chart`` is the bare chart name and helm pulls it
     from that repository (``--repo``) without it having to be added first.
     """
+    if repo_url:
+        # With --repo, helm wants the bare chart name; tolerate a "repo/chart"
+        # prefix so the user can paste either form.
+        chart = chart.rsplit("/", 1)[-1]
     args = ["install", release, chart, "--namespace", namespace]
     if repo_url:
         args += ["--repo", repo_url]
@@ -128,6 +132,8 @@ def upgrade(
     repo_url: str = "",
 ) -> str:
     """Upgrade a release, installing it if it does not yet exist (--install)."""
+    if repo_url:
+        chart = chart.rsplit("/", 1)[-1]
     args = ["upgrade", "--install", release, chart, "--namespace", namespace]
     if repo_url:
         args += ["--repo", repo_url]
