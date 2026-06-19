@@ -52,8 +52,8 @@ def register(app: Dash) -> None:
         Input("refresh-trigger", "data"),
     )
     def load_resource(pathname, namespace, _refresh, search, _tick, _trigger):
-        # The Helm page has its own table/loader; don't query the cluster for it.
-        if (pathname or "") == "/helm":
+        # The Helm and Custom Resources pages have their own loaders.
+        if (pathname or "") in ("/helm", "/crd"):
             raise PreventUpdate
         descriptor = resource_from_path(pathname)
         rows, status = list_rows(descriptor, namespace or "all")

@@ -2,7 +2,7 @@
 
 from dash import Dash
 
-from . import actions, data, details, helm, navigation
+from . import actions, crd, data, details, helm, navigation
 
 
 def register_callbacks(app: Dash) -> None:
@@ -11,3 +11,4 @@ def register_callbacks(app: Dash) -> None:
     details.register(app)
     actions.register(app)
     helm.register(app)
+    crd.register(app)

@@ -13,6 +13,9 @@ inspired by [Lens](https://k8slens.dev/).
 - **Write actions** with confirmation: scale & restart Deployments, delete Pods.
 - **Helm** page: list releases, deploy charts (with custom values), inspect
   values / history / manifest, and roll back or uninstall — all via the `helm` CLI.
+- **Custom Resources** page: CRDs are discovered live (operators installed while
+  the app runs show up without a restart); pick a type to list its instances and
+  view any instance's manifest.
 - 14 resource types implemented out of the box:
   Pods, Deployments, DaemonSets, StatefulSets, ReplicaSets, Jobs, CronJobs,
   Services, ConfigMaps, Secrets, PersistentVolumeClaims, PersistentVolumes,
@@ -77,6 +80,7 @@ freelens/
     formatters.py          # shared display helpers (age, labels, ...)
     operations.py          # YAML rendering, pod logs, scale/restart/delete
     helm.py                # Helm CLI wrapper (list/install/upgrade/rollback/...)
+    crd.py                 # CRD discovery + dynamic custom-resource access
     registry.py            # ResourceDescriptor registry + sidebar menu
   ui/
     sidebar.py             # sidebar generated from the registry
@@ -88,6 +92,7 @@ freelens/
     details.py             # selection tracking, Overview/YAML/Logs tabs
     actions.py             # write actions: button -> confirm -> execute
     helm.py                # Helm page: list/deploy/inspect/rollback/uninstall
+    crd.py                 # Custom Resources page: discover CRDs, list instances
 ```
 
 ## Adding a resource type

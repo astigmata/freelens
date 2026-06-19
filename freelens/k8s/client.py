@@ -21,6 +21,8 @@ class Clients:
     core: client.CoreV1Api
     apps: client.AppsV1Api
     batch: client.BatchV1Api
+    apiext: client.ApiextensionsV1Api  # CustomResourceDefinition discovery
+    custom: client.CustomObjectsApi  # dynamic access to CRD instances
 
 
 @lru_cache(maxsize=1)
@@ -42,6 +44,8 @@ def get_clients() -> Clients:
         core=client.CoreV1Api(),
         apps=client.AppsV1Api(),
         batch=client.BatchV1Api(),
+        apiext=client.ApiextensionsV1Api(),
+        custom=client.CustomObjectsApi(),
     )
 
 

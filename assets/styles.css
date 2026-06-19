@@ -237,6 +237,9 @@ body {
 .namespace-selector {
     min-width: 190px;
 }
+.crd-selector {
+    min-width: 340px;
+}
 .search-input,
 .action-value {
     padding: 8px 10px;

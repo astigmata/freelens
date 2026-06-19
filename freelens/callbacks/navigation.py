@@ -10,6 +10,9 @@ from ..k8s.registry import resource_from_path
 from ..ui.layout import BASE_CONDITIONAL
 
 HELM_PATH = "/helm"
+CRD_PATH = "/crd"
+# Standalone pages that replace the resource explorer rather than reusing it.
+STANDALONE_PATHS = (HELM_PATH, CRD_PATH)
 
 
 def register(app: Dash) -> None:
@@ -37,23 +40,34 @@ def register(app: Dash) -> None:
         Output("resource-table", "active_cell"),
         Output("resource-view", "style"),
         Output("helm-view", "style"),
+        Output("crd-view", "style"),
         Output({"type": "standalone-nav", "index": ALL}, "className"),
         Input("url", "pathname"),
         State({"type": "nav-link", "index": ALL}, "id"),
         State({"type": "standalone-nav", "index": ALL}, "id"),
     )
     def route(pathname, link_ids, standalone_ids):
+        path = pathname or ""
         standalone_classes = [
-            "sidebar-item active" if sid["index"] == pathname else "sidebar-item"
+            "sidebar-item active" if sid["index"] == path else "sidebar-item"
             for sid in standalone_ids
         ]
 
-        if (pathname or "") == HELM_PATH:
-            # Hide the resource explorer; the Helm callbacks own the Helm page.
+        def styles(active):
+            hide, show = {"display": "none"}, {"display": "block"}
+            return (
+                show if active == "resource" else hide,
+                show if active == HELM_PATH else hide,
+                show if active == CRD_PATH else hide,
+            )
+
+        if path in STANDALONE_PATHS:
+            # Hide the resource explorer; the page's own callbacks drive it.
             inactive = ["sidebar-subitem" for _ in link_ids]
+            res_style, helm_style, crd_style = styles(path)
             return (
                 inactive, no_update, no_update, no_update, no_update,
-                {"display": "none"}, {"display": "block"}, standalone_classes,
+                res_style, helm_style, crd_style, standalone_classes,
             )
 
         descriptor = resource_from_path(pathname)
@@ -64,8 +78,9 @@ def register(app: Dash) -> None:
             for link in link_ids
         ]
         conditional = BASE_CONDITIONAL + descriptor.table_conditional
+        res_style, helm_style, crd_style = styles("resource")
         # Clear any active cell (selection) when switching resource.
         return (
             classes, descriptor.title, descriptor.table_columns(), conditional, None,
-            {"display": "block"}, {"display": "none"}, standalone_classes,
+            res_style, helm_style, crd_style, standalone_classes,
         )

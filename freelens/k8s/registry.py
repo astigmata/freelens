@@ -694,5 +694,5 @@ MENU: tuple[MenuGroup, ...] = (
     MenuGroup("Events"),
     MenuGroup("Helm", href="/helm"),
     MenuGroup("Access Control"),
-    MenuGroup("Custom Resources"),
+    MenuGroup("Custom Resources", href="/crd"),
 )

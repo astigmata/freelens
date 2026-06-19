@@ -292,6 +292,76 @@ def _helm_view() -> html.Div:
     )
 
 
+# --------------------------------------------------------------------------- #
+# Custom Resources view — discovers CRDs at runtime and lists their instances.
+# --------------------------------------------------------------------------- #
+CRD_COLUMNS = [
+    {"name": "Name", "id": "name"},
+    {"name": "Namespace", "id": "namespace"},
+    {"name": "Age", "id": "age"},
+]
+
+
+def _crd_table() -> dash_table.DataTable:
+    return dash_table.DataTable(
+        id="crd-table",
+        columns=CRD_COLUMNS,
+        data=[],
+        style_header=_STYLE_HEADER,
+        style_cell=_STYLE_CELL,
+        style_filter=_STYLE_FILTER,
+        style_data_conditional=BASE_CONDITIONAL,
+        page_size=TABLE_PAGE_SIZE,
+        style_table={"overflowX": "auto"},
+        sort_action="native",
+        filter_action="native",
+        css=[{"selector": ".dash-cell", "rule": "cursor: pointer;"}],
+    )
+
+
+def _crd_view() -> html.Div:
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H1("Custom Resources", className="page-title"),
+                            html.Span(id="crd-row-count", className="row-count"),
+                        ],
+                        className="page-title-group",
+                    ),
+                    html.Div(
+                        [
+                            dcc.Dropdown(
+                                id="crd-select",
+                                placeholder="Select a resource type…",
+                                className="crd-selector",
+                            ),
+                            html.Button("Refresh", id="crd-refresh",
+                                        n_clicks=0, className="action-button"),
+                        ],
+                        className="header-controls",
+                    ),
+                ],
+                className="page-header",
+            ),
+            html.Div(id="crd-status", className="action-result"),
+            dcc.Loading(
+                html.Div(_crd_table(), className="table-container"),
+                type="default",
+            ),
+            html.Div(
+                [html.Div(id="crd-detail-body", className="pod-details")],
+                className="detail-panel",
+            ),
+            dcc.Store(id="crd-selected"),
+        ],
+        id="crd-view",
+        style={"display": "none"},
+    )
+
+
 def create_layout() -> html.Div:
     return html.Div(
         [
@@ -321,6 +391,8 @@ def create_layout() -> html.Div:
                     ),
                     # Helm releases (shown only on /helm).
                     _helm_view(),
+                    # Custom resources (shown only on /crd).
+                    _crd_view(),
                 ],
                 className="main-content",
             ),
