@@ -40,10 +40,18 @@ Stop it with `make compose-down` (or `Ctrl-C` then `docker compose ... down`).
 
 ## Connect a real cluster (optional)
 
-Uncomment the `KUBECONFIG` env and `volumes` block for the `freelens` service in
-`docker-compose.yml`. For a local kind/minikube cluster you also need network
-reachability from the container (e.g. host networking, or rewrite the kubeconfig
-server to `host.docker.internal`).
+A container can't reach a **kind** cluster via the host loopback the normal
+kubeconfig points at. Attach Freelens to kind's docker network and use the
+*internal* kubeconfig — `docker-compose.kind.yml` does exactly that:
+
+```bash
+kind get kubeconfig --internal --name freelens-test > /tmp/freelens-kind.kubeconfig
+docker compose -f deploy/local/docker-compose.yml \
+               -f deploy/local/docker-compose.kind.yml up --build
+```
+
+For a **remote** cluster, just mount its kubeconfig (uncomment the `KUBECONFIG`
+env and `volumes` block for the `freelens` service in `docker-compose.yml`).
 
 ## Not for production
 

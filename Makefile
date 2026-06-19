@@ -11,7 +11,7 @@ IMAGE := freelens:latest
 COMPOSE := docker compose -f deploy/local/docker-compose.yml
 
 .PHONY: help venv install dev run test clean kind-up kind-seed kind-down \
-	docker-build docker-run compose-up compose-down
+	docker-build docker-run docker-run-kind compose-up compose-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -42,6 +42,14 @@ docker-run: ## Run the image locally — loopback only, NO AUTH (dev smoke)
 		-e FREELENS_AUTH_MODE=disabled \
 		-e KUBECONFIG=/kube/config \
 		-v $${HOME}/.kube/config:/kube/config:ro \
+		$(IMAGE)
+
+docker-run-kind: ## Run the image against the local kind cluster (loopback, no auth)
+	kind get kubeconfig --internal --name $(KIND_CLUSTER) > /tmp/freelens-kind.kubeconfig
+	docker run --rm --network kind -p 127.0.0.1:8050:8050 \
+		-e FREELENS_AUTH_MODE=disabled \
+		-e KUBECONFIG=/kube/config \
+		-v /tmp/freelens-kind.kubeconfig:/kube/config:ro \
 		$(IMAGE)
 
 compose-up: ## Local authenticated demo (Keycloak + oauth2-proxy + Freelens)

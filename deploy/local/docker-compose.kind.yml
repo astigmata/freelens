@@ -1,0 +1,23 @@
+# Override: connect the demo's Freelens to a local kind cluster.
+#
+# kind's API server listens on the host loopback, which a container can't reach.
+# This attaches Freelens to kind's docker network and uses the "internal"
+# kubeconfig (server = <cluster>-control-plane:6443).
+#
+# First generate the internal kubeconfig, then bring the stack up with both files:
+#
+#   kind get kubeconfig --internal --name freelens-test > /tmp/freelens-kind.kubeconfig
+#   docker compose -f deploy/local/docker-compose.yml \
+#                  -f deploy/local/docker-compose.kind.yml up --build
+#
+networks:
+  kind:
+    external: true
+
+services:
+  freelens:
+    networks: [default, kind]
+    environment:
+      KUBECONFIG: /kube/config
+    volumes:
+      - /tmp/freelens-kind.kubeconfig:/kube/config:ro
