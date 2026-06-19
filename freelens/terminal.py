@@ -10,13 +10,27 @@ top, colours…), not one-shot command execution.
 
 import json
 import logging
+from urllib.parse import urlparse
 
 from flask import Flask, Response, request
 from kubernetes.stream import stream
 
+from . import config
 from .k8s.client import get_clients
 
 log = logging.getLogger(__name__)
+
+# Locked-down CSP for the terminal page: no remote code, assets served from this
+# origin only, sockets to same origin (ws/wss). It can only be framed by the app.
+_TERMINAL_CSP = (
+    "default-src 'none'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "connect-src 'self' ws: wss:; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "frame-ancestors 'self'"
+)
 
 try:
     from flask_sock import Sock
@@ -29,9 +43,9 @@ _TERMINAL_PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8"/>
 <title>Pod terminal</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<link rel="stylesheet" href="/assets/vendor/xterm.min.css"/>
+<script src="/assets/vendor/xterm.min.js"></script>
+<script src="/assets/vendor/xterm-addon-fit.min.js"></script>
 <style>
   html, body { margin: 0; height: 100%; background: #15171a; }
   #term { height: 100%; width: 100%; padding: 6px; box-sizing: border-box; }
@@ -77,10 +91,22 @@ def register_terminal(server: Flask) -> bool:
 
     @server.route("/terminal")
     def terminal_page():
-        return Response(_TERMINAL_PAGE, mimetype="text/html")
+        resp = Response(_TERMINAL_PAGE, mimetype="text/html")
+        resp.headers["Content-Security-Policy"] = _TERMINAL_CSP
+        return resp
 
     @sock.route("/ws/exec")
     def exec_socket(ws):
+        # Defend against Cross-Site WebSocket Hijacking: a cross-origin page must
+        # not be able to open a shell through a logged-in user's browser. Browsers
+        # always send Origin on WebSocket handshakes, so a missing/foreign Origin
+        # is rejected.
+        if not _origin_allowed(request):
+            log.warning("Rejected /ws/exec from disallowed origin: %r",
+                        request.headers.get("Origin"))
+            ws.send("Origin not allowed.\r\n")
+            return
+
         namespace = request.args.get("namespace", "")
         pod = request.args.get("pod", "")
         container = request.args.get("container") or None
@@ -107,6 +133,21 @@ def register_terminal(server: Flask) -> bool:
         _bridge(ws, resp)
 
     return True
+
+
+def _origin_allowed(req) -> bool:
+    """True when the WebSocket handshake's Origin is same-origin or allow-listed.
+
+    A missing Origin is rejected: real browsers always send one on a WebSocket
+    handshake, so its absence means a non-browser / forged client.
+    """
+    origin = req.headers.get("Origin")
+    if not origin:
+        return False
+    if origin in config.ALLOWED_ORIGINS:
+        return True
+    # Same-origin: the Origin's host[:port] must match the request Host header.
+    return urlparse(origin).netloc == req.host
 
 
 def _bridge(ws, resp) -> None:

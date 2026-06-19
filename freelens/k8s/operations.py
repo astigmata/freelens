@@ -12,9 +12,38 @@ from kubernetes import client as k8s
 from .client import Clients
 
 
+# Secret kinds whose value maps must never be rendered. The base64 in a Secret's
+# ``data`` is only an encoding, not encryption, so dumping it leaks the value.
+_SECRET_VALUE_KEYS = ("data", "stringData")
+
+
+def _redact_secret(data: dict) -> dict:
+    """Replace Secret value maps with a placeholder, keeping the key names.
+
+    The detail panel already shows only key names on purpose; this keeps the YAML
+    tab consistent and avoids leaking credentials (and possibly PHI) in clear.
+    """
+    if not isinstance(data, dict) or data.get("kind") != "Secret":
+        return data
+    for key in _SECRET_VALUE_KEYS:
+        values = data.get(key)
+        if isinstance(values, dict):
+            data[key] = {name: "<redacted>" for name in values}
+    return data
+
+
 def to_yaml(obj) -> str:
-    """Serialize a Kubernetes API object to a clean YAML manifest."""
+    """Serialize a Kubernetes API object to a clean YAML manifest.
+
+    Secret values are redacted: their base64 ``data`` is an encoding, not a
+    protection, so it is never rendered.
+    """
     data = k8s.ApiClient().sanitize_for_serialization(obj)
+    # The typed read API does not always populate kind/apiVersion; set it from
+    # the Python type so the redaction below can recognise a Secret.
+    if isinstance(obj, k8s.V1Secret):
+        data["kind"] = "Secret"
+    data = _redact_secret(data)
     return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
 
 

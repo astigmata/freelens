@@ -84,7 +84,10 @@ def register(app: Dash) -> None:
             return render_details(descriptor, get_object(descriptor, name, namespace))
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not render %s for %s: %s", tab, name, exc)
-            return html.Div(f"Error: {exc}", className="detail-error")
+            return html.Div(
+                "Could not load this view. See the server logs for details.",
+                className="detail-error",
+            )
 
     @app.callback(
         Output("log-output", "children"),
@@ -102,7 +105,8 @@ def register(app: Dash) -> None:
             )
             return _filter_lines(logs, log_filter) or "(no logs)"
         except Exception as exc:  # noqa: BLE001
-            return f"Error fetching logs: {exc}"
+            log.warning("Could not fetch logs for %s: %s", selected.get("name"), exc)
+            return "Could not fetch logs. See the server logs for details."
 
     @app.callback(
         Output("log-download", "data"),

@@ -69,7 +69,7 @@ def register(app: Dash) -> None:
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not list %s: %s", meta["plural"], exc)
-            return [], columns, None, "", f"Error: {exc}"
+            return [], columns, None, "", "Could not list instances. See the server logs."
 
         rows = crd.to_rows(items)
         count = f"{len(rows)} item{'s' if len(rows) != 1 else ''}"
@@ -106,4 +106,7 @@ def register(app: Dash) -> None:
             return html.Pre(ops.to_yaml(obj), className="yaml-view")
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not read custom resource %s: %s", selected["name"], exc)
-            return html.Div(f"Error: {exc}", className="detail-error")
+            return html.Div(
+                "Could not read this resource. See the server logs for details.",
+                className="detail-error",
+            )

@@ -6,6 +6,7 @@ import dash
 
 from freelens import config
 from freelens.callbacks import register_callbacks
+from freelens.security import register_security_headers
 from freelens.terminal import register_terminal
 from freelens.ui.layout import create_layout
 
@@ -20,6 +21,8 @@ app = dash.Dash(
 )
 app.layout = create_layout()
 register_callbacks(app)
+# Defence-in-depth HTTP headers on every response.
+register_security_headers(app.server)
 # Interactive pod terminal (xterm.js <-> WebSocket <-> pod exec stream).
 register_terminal(app.server)
 

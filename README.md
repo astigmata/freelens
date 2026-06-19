@@ -30,7 +30,7 @@ inspired by [Lens](https://k8slens.dev/).
 ## Requirements
 
 - Python 3.10+ (`flask-sock` enables the pod terminal; the xterm.js front-end is
-  loaded from a CDN, so the browser needs internet access for the Exec tab).
+  served locally from `assets/vendor/`, so no internet access is required).
 - Access to a Kubernetes cluster via a local `kubeconfig` or in-cluster credentials.
 - The [`helm`](https://helm.sh/) CLI on `PATH` (optional — only for the Helm page).
 
