@@ -39,9 +39,9 @@ def test_proxy_identity_from_trusted_proxy():
     app = _app()
     with app.test_request_context(
         "/", environ_base={"REMOTE_ADDR": "127.0.0.1"},
-        headers={"X-Auth-Request-User": "alice",
-                 "X-Auth-Request-Email": "alice@chu.fr",
-                 "X-Auth-Request-Groups": "cardio,admins"},
+        headers={"X-Forwarded-Preferred-Username": "alice",
+                 "X-Forwarded-Email": "alice@chu.fr",
+                 "X-Forwarded-Groups": "cardio,admins"},
     ):
         ident = auth.identity_from_request()
     assert ident.user == "alice"
@@ -54,7 +54,7 @@ def test_headers_from_untrusted_source_are_ignored(monkeypatch):
     app = _app()
     with app.test_request_context(
         "/", environ_base={"REMOTE_ADDR": "127.0.0.1"},
-        headers={"X-Auth-Request-User": "attacker"},
+        headers={"X-Forwarded-Preferred-Username": "attacker"},
     ):
         assert auth.identity_from_request() is None
 
@@ -78,7 +78,7 @@ def test_unauthenticated_request_is_rejected(monkeypatch):
 
 def test_authenticated_request_passes():
     client = _app().test_client()
-    resp = client.get("/r/pods", headers={"X-Auth-Request-User": "bob"})
+    resp = client.get("/r/pods", headers={"X-Forwarded-Preferred-Username": "bob"})
     assert resp.status_code == 200
     assert resp.get_json()["user"] == "bob"
 
@@ -89,7 +89,7 @@ def test_healthz_is_public():
 
 def test_cross_origin_post_is_blocked():
     client = _app().test_client()
-    resp = client.post("/act", headers={"X-Auth-Request-User": "bob",
+    resp = client.post("/act", headers={"X-Forwarded-Preferred-Username": "bob",
                                         "Origin": "https://evil.example"})
     assert resp.status_code == 403
 
@@ -97,14 +97,14 @@ def test_cross_origin_post_is_blocked():
 def test_same_origin_post_is_allowed():
     client = _app().test_client()
     resp = client.post("/act", base_url="http://localhost",
-                       headers={"X-Auth-Request-User": "bob",
+                       headers={"X-Forwarded-Preferred-Username": "bob",
                                 "Origin": "http://localhost"})
     assert resp.status_code == 200
 
 
 def test_post_without_origin_is_blocked():
     client = _app().test_client()
-    resp = client.post("/act", headers={"X-Auth-Request-User": "bob"})
+    resp = client.post("/act", headers={"X-Forwarded-Preferred-Username": "bob"})
     assert resp.status_code == 403
 
 

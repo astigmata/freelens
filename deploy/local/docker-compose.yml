@@ -1,0 +1,91 @@
+# Local end-to-end demo of the AUTHENTICATED flow:
+#
+#   Browser ─▶ oauth2-proxy (:4180) ─▶ Freelens (:8050, proxy mode)
+#                   │ OIDC login
+#                   ▼
+#               Keycloak (:8080)
+#
+# Open http://localhost:4180 and log in as  alice / password.
+#
+#   docker compose -f deploy/local/docker-compose.yml up --build
+#
+# Notes
+# - Keycloak's public issuer is http://localhost:8080 (browser-facing) while
+#   oauth2-proxy redeems tokens over the internal hostname (keycloak:8080);
+#   KC_HOSTNAME_BACKCHANNEL_DYNAMIC makes that work.
+# - Freelens trusts identity headers only from the compose subnet (where
+#   oauth2-proxy lives), so they can't be forged from outside.
+# - No Kubernetes cluster is required to exercise the login; cluster panels will
+#   show connection errors until you give Freelens a kubeconfig (see below).
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    ports:
+      - "8080:8080"
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    depends_on: [keycloak, freelens]
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://localhost:8080/realms/freelens
+      OAUTH2_PROXY_LOGIN_URL: http://localhost:8080/realms/freelens/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/freelens/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/freelens/protocol/openid-connect/certs
+      OAUTH2_PROXY_CLIENT_ID: oauth2-proxy
+      OAUTH2_PROXY_CLIENT_SECRET: oauth2-proxy-secret
+      # Demo cookie secret (32 bytes). Generate a fresh one for anything real:
+      #   openssl rand -base64 32
+      OAUTH2_PROXY_COOKIE_SECRET: "0123456789abcdef0123456789abcdef"
+      OAUTH2_PROXY_COOKIE_SECURE: "false"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REDIRECT_URL: http://localhost:4180/oauth2/callback
+      OAUTH2_PROXY_UPSTREAMS: http://freelens:8050
+      OAUTH2_PROXY_SCOPE: openid email profile
+      OAUTH2_PROXY_OIDC_GROUPS_CLAIM: groups
+      # Forwards X-Forwarded-{Preferred-Username,Email,Groups} to the upstream,
+      # which is what Freelens reads by default.
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "false"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
+    ports:
+      - "4180:4180"
+
+  freelens:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    environment:
+      FREELENS_AUTH_MODE: proxy
+      # Trust identity headers from the compose subnet (oauth2-proxy lives here).
+      FREELENS_TRUSTED_PROXIES: "172.28.0.0/16"
+      FREELENS_IMPERSONATE: "true"
+      FREELENS_SECRET_KEY: "local-demo-secret-change-me"
+      FREELENS_DEBUG: "false"
+    # To talk to a real cluster, uncomment and point KUBECONFIG at a mounted file
+    # (a kind/minikube cluster also needs network reachability — see README):
+    # environment additions:
+    #   KUBECONFIG: /kube/config
+    # volumes:
+    #   - ${HOME}/.kube/config:/kube/config:ro
+    expose:
+      - "8050"   # internal only — reachable through oauth2-proxy, not published
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

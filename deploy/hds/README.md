@@ -9,14 +9,14 @@ transit**, **least privilege** and an **audit trail**.
 ```
           TLS                      loopback (trusted)
 Browser ───────▶ Ingress ─▶ oauth2-proxy ──────────────▶ Freelens ─┐
-  │  OIDC login          (sidecar, :4180)   X-Auth-Request-*  :8050 │
+  │  OIDC login          (sidecar, :4180)   X-Forwarded-*  :8050 │
   │                                                                 │ Impersonate-User/-Group
   └────────────────────────────────────────────────── Kubernetes API server
                                                        (enforces user RBAC,
                                                         audits the real actor)
 ```
 
-- **oauth2-proxy** performs the OIDC login and injects `X-Auth-Request-User`,
+- **oauth2-proxy** performs the OIDC login and injects `X-Forwarded-Preferred-Username`,
   `-Email`, `-Groups`. It talks to Freelens over loopback inside the pod.
 - **Freelens** runs with `FREELENS_AUTH_MODE=proxy` and trusts those headers only
   from `127.0.0.1`, so they cannot be forged from outside the pod. Every request

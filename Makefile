@@ -8,8 +8,10 @@ KIND_CONTEXT := kind-$(KIND_CLUSTER)
 
 IMAGE := freelens:latest
 
+COMPOSE := docker compose -f deploy/local/docker-compose.yml
+
 .PHONY: help venv install dev run test clean kind-up kind-seed kind-down \
-	docker-build docker-run
+	docker-build docker-run compose-up compose-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -41,6 +43,12 @@ docker-run: ## Run the image locally — loopback only, NO AUTH (dev smoke)
 		-e KUBECONFIG=/kube/config \
 		-v $${HOME}/.kube/config:/kube/config:ro \
 		$(IMAGE)
+
+compose-up: ## Local authenticated demo (Keycloak + oauth2-proxy + Freelens)
+	$(COMPOSE) up --build
+
+compose-down: ## Tear down the local authenticated demo
+	$(COMPOSE) down -v
 
 clean: ## Remove caches and build artifacts
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +

@@ -35,9 +35,9 @@ spec:
             - --oidc-issuer-url=$(OIDC_ISSUER_URL)
             - --email-domain=*
             - --scope=openid email profile groups
-            # Forward the identity to the upstream as the headers Freelens reads.
+            # Forwards X-Forwarded-{Preferred-Username,Email,Groups} upstream,
+            # which is what Freelens reads by default.
             - --pass-user-headers=true
-            - --set-xauthrequest=true
             - --pass-access-token=false
             # Map the OIDC "preferred_username"/"groups" into the headers.
             - --oidc-groups-claim=groups

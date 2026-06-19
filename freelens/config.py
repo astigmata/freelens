@@ -38,10 +38,14 @@ AUTH_MODE = os.environ.get("FREELENS_AUTH_MODE", "disabled").strip().lower()
 # cannot be spoofed by a client talking to the app directly.
 TRUSTED_PROXIES = _csv("FREELENS_TRUSTED_PROXIES")
 
-# Header names injected by the proxy (oauth2-proxy defaults).
-HEADER_USER = os.environ.get("FREELENS_HEADER_USER", "X-Auth-Request-User")
-HEADER_EMAIL = os.environ.get("FREELENS_HEADER_EMAIL", "X-Auth-Request-Email")
-HEADER_GROUPS = os.environ.get("FREELENS_HEADER_GROUPS", "X-Auth-Request-Groups")
+# Header names injected by the proxy. Defaults match what oauth2-proxy forwards
+# to an upstream with --pass-user-headers: the human-readable username comes from
+# X-Forwarded-Preferred-Username (X-Forwarded-User is the opaque subject id).
+# Override these if your proxy uses different header names (e.g. nginx
+# auth_request mode emits X-Auth-Request-*).
+HEADER_USER = os.environ.get("FREELENS_HEADER_USER", "X-Forwarded-Preferred-Username")
+HEADER_EMAIL = os.environ.get("FREELENS_HEADER_EMAIL", "X-Forwarded-Email")
+HEADER_GROUPS = os.environ.get("FREELENS_HEADER_GROUPS", "X-Forwarded-Groups")
 
 # Flask session signing key. Generated per-process if unset (fine for proxy mode,
 # where sessions are not the source of truth). Set it to a stable secret to keep

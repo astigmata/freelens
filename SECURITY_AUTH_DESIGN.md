@@ -39,7 +39,7 @@ gère le flow Authorization Code + PKCE, la session, le refresh, le logout, et
 ```
 Browser ──TLS──▶ oauth2-proxy ──▶ Freelens (gunicorn)
                     │ vérifie la session OIDC
-                    └─ ajoute: X-Auth-Request-User / -Email / -Groups
+                    └─ ajoute: X-Forwarded-Preferred-Username / -Email / -Groups
 ```
 
 Avantages : la logique cryptographique sensible (jetons, PKCE, sessions) reste
@@ -49,7 +49,7 @@ SameSite sont gérés au proxy.
 > ⚠️ **L'app doit refuser tout accès direct** : binder sur `127.0.0.1` (ou un
 > réseau interne), n'accepter que le trafic du proxy, et **faire confiance aux
 > en-têtes uniquement s'ils proviennent du proxy** (mTLS interne ou IP de
-> confiance). Sinon les en-têtes `X-Auth-Request-*` sont falsifiables.
+> confiance). Sinon les en-têtes `X-Forwarded-*` sont falsifiables.
 
 ### Brique applicative : un `before_request` qui exige l'identité
 
@@ -68,12 +68,12 @@ class Identity:
     groups: tuple[str, ...]
 
 def _identity_from_request():
-    user = request.headers.get("X-Auth-Request-User")
+    user = request.headers.get("X-Forwarded-Preferred-Username")
     if not user:
         return None
-    groups = request.headers.get("X-Auth-Request-Groups", "")
+    groups = request.headers.get("X-Forwarded-Groups", "")
     return Identity(user=user,
-                    email=request.headers.get("X-Auth-Request-Email", ""),
+                    email=request.headers.get("X-Forwarded-Email", ""),
                     groups=tuple(g for g in groups.split(",") if g))
 
 def register_auth(server):

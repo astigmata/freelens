@@ -88,7 +88,16 @@ make docker-build                     # build freelens:latest
 make docker-run                       # local smoke test (disabled mode, loopback)
 ```
 
-For a real deployment behind oauth2-proxy, see [`deploy/hds/`](./deploy/hds/).
+To try the **real authenticated flow** locally (OIDC login via Keycloak →
+oauth2-proxy → Freelens in `proxy` mode), use the demo compose stack:
+
+```bash
+make compose-up                       # http://localhost:4180 — log in as alice / password
+make compose-down
+```
+
+See [`deploy/local/`](./deploy/local/) for that demo and
+[`deploy/hds/`](./deploy/hds/) for a hardened, TLS-terminated deployment.
 
 ## Local test cluster (KinD)
 
