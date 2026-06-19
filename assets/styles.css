@@ -607,3 +607,103 @@ body {
     border: 1px solid rgba(244, 85, 74, 0.3);
     border-radius: var(--radius-sm);
 }
+
+/* ===========================================================================
+   Responsive layout
+   =========================================================================== */
+/* Mobile drawer controls are hidden on wide screens. */
+.sidebar-toggle {
+    display: none;
+}
+.sidebar-overlay {
+    display: none;
+}
+
+/* Tablets & narrow windows: sidebar becomes an off-canvas drawer. */
+@media (max-width: 900px) {
+    .app-container {
+        flex-direction: column;
+    }
+    .sidebar-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 1100;
+        width: 42px;
+        height: 42px;
+        font-size: 20px;
+        background-color: var(--sidebar-bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+    }
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        transform: translateX(-100%);
+        transition: transform var(--transition);
+        z-index: 1090;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1080;
+    }
+    .main-content {
+        padding: 64px 16px 16px;
+    }
+    .header-controls {
+        width: 100%;
+    }
+    .search-input,
+    .namespace-selector,
+    .crd-selector {
+        width: 100%;
+        min-width: 0;
+    }
+    .helm-form-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .helm-field,
+    .helm-field .search-input {
+        width: 100%;
+    }
+    .logs-controls .namespace-selector {
+        width: 100%;
+    }
+}
+
+/* Phones: stack label/value pairs and tighten spacing. */
+@media (max-width: 600px) {
+    .page-header {
+        align-items: flex-start;
+    }
+    .page-title {
+        font-size: 22px;
+    }
+    .detail-row {
+        flex-direction: column;
+        gap: 2px;
+    }
+    .detail-label {
+        width: auto;
+    }
+    .pod-details,
+    .deployment-details {
+        padding: 16px;
+    }
+}

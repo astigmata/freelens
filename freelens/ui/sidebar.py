@@ -88,5 +88,6 @@ def create_sidebar() -> html.Div:
             ),
             html.Div(nav_children, className="sidebar-nav"),
         ],
+        id="sidebar",
         className="sidebar",
     )

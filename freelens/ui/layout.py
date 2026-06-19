@@ -387,6 +387,9 @@ def create_layout() -> html.Div:
             dcc.Store(id="refresh-trigger", data=0),
             dcc.Store(id="selected-resource"),
             dcc.Store(id="action-pending"),
+            # Mobile drawer controls (hidden on wide screens via CSS).
+            html.Button("☰", id="sidebar-toggle", className="sidebar-toggle", n_clicks=0),
+            html.Div(id="sidebar-overlay", className="sidebar-overlay", n_clicks=0),
             create_sidebar(),
             html.Div(
                 [

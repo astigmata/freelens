@@ -4,7 +4,7 @@ Two pattern-matching callbacks replace the four near-identical ``toggle_*_menu``
 callbacks and the giant 30-output active-state callback of the original code.
 """
 
-from dash import ALL, MATCH, Dash, Input, Output, State, no_update
+from dash import ALL, MATCH, Dash, Input, Output, State, ctx, no_update
 
 from ..k8s.registry import resource_from_path
 from ..ui.layout import BASE_CONDITIONAL
@@ -28,6 +28,26 @@ def register(app: Dash) -> None:
         is_open = style.get("display") == "block"
         style["display"] = "none" if is_open else "block"
         return style
+
+    # Open/close the mobile sidebar drawer. The hamburger toggles it; clicking the
+    # overlay or navigating to a new page closes it. On wide screens the CSS keeps
+    # the sidebar visible regardless of the "open" class.
+    @app.callback(
+        Output("sidebar", "className"),
+        Output("sidebar-overlay", "style"),
+        Input("sidebar-toggle", "n_clicks"),
+        Input("sidebar-overlay", "n_clicks"),
+        Input("url", "pathname"),
+        State("sidebar", "className"),
+        prevent_initial_call=True,
+    )
+    def toggle_sidebar(_toggle, _overlay, _pathname, current):
+        is_open = "open" in (current or "")
+        # Only the hamburger flips it open; everything else closes it.
+        is_open = not is_open if ctx.triggered_id == "sidebar-toggle" else False
+        class_name = "sidebar open" if is_open else "sidebar"
+        overlay = {"display": "block"} if is_open else {"display": "none"}
+        return class_name, overlay
 
     # React to the active route: highlight the link, set the title, swap the
     # table's columns/conditional styling, and toggle between the resource

@@ -10,7 +10,13 @@ from freelens.ui.layout import create_layout
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-app = dash.Dash(__name__, suppress_callback_exceptions=True, title="Kubernetes Explorer")
+app = dash.Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    title="Kubernetes Explorer",
+    # Required for the responsive CSS media queries to trigger on mobile devices.
+    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
+)
 app.layout = create_layout()
 register_callbacks(app)
 
