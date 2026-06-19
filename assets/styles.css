@@ -386,7 +386,10 @@ body {
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
     width: 100%;
-    overflow: hidden;
+    /* Let wide tables (e.g. Pods' 9 columns) scroll horizontally instead of
+       being clipped; vertical stays hidden since the table paginates. */
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 .dash-spreadsheet-container .dash-spreadsheet-inner table {
     border-collapse: collapse;

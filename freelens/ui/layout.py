@@ -31,6 +31,13 @@ _STYLE_CELL = {
     "backgroundColor": "#24272c",
     "color": "#e4e6eb",
     "fontSize": "13.5px",
+    # Cap column widths and ellipsize so wide tables (e.g. Pods' 9 columns) fit
+    # on screen instead of pushing the last columns out of view.
+    "whiteSpace": "nowrap",
+    "overflow": "hidden",
+    "textOverflow": "ellipsis",
+    "minWidth": "80px",
+    "maxWidth": "240px",
 }
 _STYLE_FILTER = {"backgroundColor": "#2c3036", "color": "#e4e6eb"}
 BASE_CONDITIONAL = [{"if": {"row_index": "odd"}, "backgroundColor": "#1f2227"}]
