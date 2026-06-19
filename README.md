@@ -13,6 +13,8 @@ inspired by [Lens](https://k8slens.dev/).
 - **Write actions** with confirmation: scale & restart Deployments, delete Pods.
 - **Helm** page: list releases, deploy charts (with custom values), inspect
   values / history / manifest, and roll back or uninstall — all via the `helm` CLI.
+  A built-in **catalog** of popular charts (MetalLB, ingress-nginx, cert-manager,
+  Prometheus, Grafana, Argo CD, …) one-click pre-fills the deploy form.
 - **Custom Resources** page: CRDs are discovered live (operators installed while
   the app runs show up without a restart); pick a type to list its instances and
   view any instance's manifest.
@@ -80,6 +82,7 @@ freelens/
     formatters.py          # shared display helpers (age, labels, ...)
     operations.py          # YAML rendering, pod logs, scale/restart/delete
     helm.py                # Helm CLI wrapper (list/install/upgrade/rollback/...)
+    helm_catalog.py        # curated catalog of popular charts (pre-fill deploy form)
     crd.py                 # CRD discovery + dynamic custom-resource access
     registry.py            # ResourceDescriptor registry + sidebar menu
   ui/

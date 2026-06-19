@@ -11,6 +11,7 @@ from dash import ALL, Dash, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 
 from ..k8s import helm
+from ..k8s.helm_catalog import CATALOG_BY_KEY
 from ..ui.components import (
     helm_placeholder,
     render_helm_actions,
@@ -65,6 +66,22 @@ def register(app: Dash) -> None:
     )
     def toggle_helm_autorefresh(value):
         return "on" not in (value or [])
+
+    @app.callback(
+        Output("helm-f-release", "value"),
+        Output("helm-f-chart", "value"),
+        Output("helm-f-repo", "value"),
+        Output("helm-f-namespace", "value"),
+        Output("helm-f-version", "value"),
+        Input("helm-catalog", "value"),
+        prevent_initial_call=True,
+    )
+    def fill_from_catalog(key):
+        entry = CATALOG_BY_KEY.get(key)
+        if entry is None:
+            raise PreventUpdate
+        # Pre-fill the form; version is left blank so helm installs the latest.
+        return entry.release, entry.chart, entry.repo_url, entry.namespace, ""
 
     @app.callback(
         Output("helm-deploy-form", "style"),

@@ -8,6 +8,7 @@ hard-coded ``<resource>-view`` block per resource type.
 from dash import dash_table, dcc, html
 
 from ..config import TABLE_PAGE_SIZE
+from ..k8s.helm_catalog import CATALOG
 from ..k8s.registry import DEFAULT_RESOURCE, REGISTRY
 from .sidebar import create_sidebar
 
@@ -168,6 +169,18 @@ def _helm_deploy_form() -> html.Div:
     return html.Div(
         [
             html.H3("Deploy a chart"),
+            _helm_field(
+                "Popular charts",
+                dcc.Dropdown(
+                    id="helm-catalog",
+                    options=[
+                        {"label": f"{e.label} — {e.description}", "value": e.key}
+                        for e in CATALOG
+                    ],
+                    placeholder="Pick a known chart to pre-fill the form…",
+                    className="crd-selector",
+                ),
+            ),
             html.Div(
                 [
                     _helm_field(
