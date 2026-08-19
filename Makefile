@@ -10,7 +10,7 @@ IMAGE := freelens:latest
 
 COMPOSE := docker compose -f deploy/local/docker-compose.yml
 
-.PHONY: help venv install dev run test clean kind-up kind-seed kind-down \
+.PHONY: help venv install dev run test lint clean kind-up kind-seed kind-down \
 	docker-build docker-run docker-run-kind compose-up compose-down
 
 help: ## Show this help
@@ -26,13 +26,16 @@ install: venv ## Install runtime dependencies
 	$(PIP) install -r requirements.txt
 
 dev: install ## Install runtime + development dependencies
-	$(PIP) install pytest
+	$(PIP) install -e ".[dev]"
 
 run: ## Run the app locally — loopback only, NO AUTH (dev)
 	FREELENS_HOST=127.0.0.1 FREELENS_AUTH_MODE=disabled $(PYTHON) app.py
 
 test: ## Run the test suite
 	$(PYTHON) -m pytest tests/ -q
+
+lint: ## Lint with ruff
+	$(VENV)/bin/ruff check freelens/ tests/ app.py
 
 docker-build: ## Build the container image
 	docker build -t $(IMAGE) .

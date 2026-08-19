@@ -64,6 +64,12 @@ IMPERSONATE = os.environ.get(
 # (capture them at the platform level into an immutable sink).
 AUDIT_FILE = os.environ.get("FREELENS_AUDIT_FILE", "").strip()
 
+# Address the server-side port-forward listeners bind to. A forwarded port has no
+# authentication of its own (it is a raw TCP bridge into the pod), so it must
+# stay on loopback: only someone on the same host as the app can reach it. The
+# manager refuses a non-loopback bind unless FREELENS_ALLOW_INSECURE is set.
+FORWARD_BIND_HOST = os.environ.get("FREELENS_FORWARD_BIND_HOST", "127.0.0.1")
+
 # Escape hatch: allow running with AUTH_MODE=disabled while bound to a non-loopback
 # address. Off by default — the app refuses such a configuration so an
 # unauthenticated instance can't be exposed on the network by accident. Only set

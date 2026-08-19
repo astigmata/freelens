@@ -9,12 +9,22 @@ inspired by [Lens](https://k8slens.dev/).
 - Filter by namespace, free-text search, and **native column sorting / filtering**.
 - Connection status badge, active-context label and live row counter.
 - **Auto-refresh** (toggle) plus a manual refresh button.
-- Resource detail panel with **Overview / YAML / Logs / Exec** tabs. Logs have a
-  line filter and a download button; **Exec** opens a real interactive terminal
-  (TTY) into the pod via xterm.js over a WebSocket.
+- Resource detail panel with **Overview / YAML / Logs / Exec / Forward** tabs.
+  Logs have a line filter and a download button; **Exec** opens a real
+  interactive terminal (TTY) into the pod via xterm.js over a WebSocket.
+- **Port forwarding** (Pods & Services): the **Forward** tab opens a local TCP
+  listener on the server that bridges into the selected port — `kubectl
+  port-forward` run inside the app. Forwarding to a Service resolves a ready
+  backing pod and its target port automatically. Listeners bind to loopback
+  (`FREELENS_FORWARD_BIND_HOST`, default `127.0.0.1`) since the bridged port is
+  unauthenticated; start/stop are audited.
 - **Write actions** with confirmation: scale & restart Deployments, delete Pods.
 - **Multi-select delete**: checkboxes on every row delete many resources at once
-  (selection resets when you switch resource type).
+  (selection is tracked by stable row ids, so it survives sorting, filtering and
+  page navigation; it resets when you switch resource type).
+- **Paginated tables**: only the visible page is rendered, so clusters with
+  thousands of objects stay responsive (page size via `FREELENS_TABLE_PAGE_SIZE`,
+  default 15). Native sort/filter still cover the whole dataset.
 - **Helm** page: list releases, deploy charts (with custom values), inspect
   values / history / manifest, and roll back or uninstall — all via the `helm` CLI.
   A built-in **catalog** of popular charts (MetalLB, ingress-nginx, cert-manager,
@@ -22,10 +32,12 @@ inspired by [Lens](https://k8slens.dev/).
 - **Custom Resources** page: CRDs are discovered live (operators installed while
   the app runs show up without a restart); pick a type to list its instances and
   view any instance's manifest.
-- 14 resource types implemented out of the box:
+- 21 resource types implemented out of the box:
   Pods, Deployments, DaemonSets, StatefulSets, ReplicaSets, Jobs, CronJobs,
-  Services, ConfigMaps, Secrets, PersistentVolumeClaims, PersistentVolumes,
-  Nodes, Namespaces. More are easy to add — see below.
+  Services, Endpoints, Ingresses, Network Policies, ConfigMaps, Secrets,
+  Service Accounts, Horizontal Pod Autoscalers, PersistentVolumeClaims,
+  PersistentVolumes, Storage Classes, Nodes, Namespaces, Events.
+  More are easy to add — see below.
 
 ## Requirements
 
@@ -114,8 +126,8 @@ make kind-down    # tear the cluster down
 
 ## Make targets
 
-Run `make help` to list everything: `install`, `dev`, `run`, `test`, `clean`,
-`kind-up`, `kind-seed`, `kind-down`.
+Run `make help` to list everything: `install`, `dev`, `run`, `test`, `lint`,
+`clean`, `kind-up`, `kind-seed`, `kind-down`.
 
 ## Architecture
 
@@ -129,10 +141,12 @@ app.py                     # entry point
 freelens/
   config.py                # settings (env-overridable)
   terminal.py              # xterm.js page + WebSocket bridge to pod exec (TTY)
+  portforward.py           # server-side TCP listeners bridged to pod ports
   k8s/
-    client.py              # cached Kubernetes API clients (core/apps/batch) + context
+    client.py              # cached Kubernetes API clients (core/apps/batch/
+                           # networking/autoscaling/storage) + context
     formatters.py          # shared display helpers (age, labels, ...)
-    operations.py          # YAML rendering, pod logs, scale/restart/delete
+    operations.py          # YAML rendering, pod logs, scale/restart/delete, fwd targets
     helm.py                # Helm CLI wrapper (list/install/upgrade/rollback/...)
     helm_catalog.py        # curated catalog of popular charts (pre-fill deploy form)
     crd.py                 # CRD discovery + dynamic custom-resource access
@@ -144,8 +158,9 @@ freelens/
   callbacks/
     navigation.py          # collapsible groups + URL-driven view switching
     data.py                # generic data loading, status/context/auto-refresh
-    details.py             # selection tracking, Overview/YAML/Logs tabs
+    details.py             # selection tracking, Overview/YAML/Logs/Exec/Forward tabs
     actions.py             # write actions: button -> confirm -> execute
+    forward.py             # port-forward tab: start/stop local listeners
     helm.py                # Helm page: list/deploy/inspect/rollback/uninstall
     crd.py                 # Custom Resources page: discover CRDs, list instances
 ```

@@ -67,6 +67,7 @@ class ResourceDescriptor:
     namespaced: bool = True
     supports_logs: bool = False
     supports_exec: bool = False
+    supports_forward: bool = False
     actions: tuple[ResourceAction, ...] = ()
     table_conditional: list = field(default_factory=list)
     # Generic delete used by bulk selection; None => not bulk-deletable.
@@ -97,8 +98,12 @@ def list_rows(
             {col.id: str(col.accessor(obj)) for col in descriptor.columns}
             for obj in objs
         ]
+        for row in rows:
+            # Stable, unique row id so row selection survives sorting, filtering
+            # and pagination (Dash tracks selection by id, not by index).
+            row["id"] = f"{row.get('namespace', '')}/{row['name']}"
         return rows, "Connected"
-    except Exception as exc:  # noqa: BLE001 — surfaced to the user
+    except Exception as exc:  # noqa: BLE001
         log.warning("Could not list %s: %s", descriptor.key, exc)
         return [], "Error"
 
@@ -240,6 +245,7 @@ PODS = ResourceDescriptor(
     delete_fn=_delete("core", "delete_namespaced_pod"),
     supports_logs=True,
     supports_exec=True,
+    supports_forward=True,
     actions=(_DELETE_POD,),
     columns=[
         Column("Name", _NAME),
@@ -253,9 +259,9 @@ PODS = ResourceDescriptor(
         Column("Status", lambda p: p.status.phase),
     ],
     table_conditional=[
-        {"if": {"filter_query": '{status} = "Running"'}, "color": "#4caf50"},
-        {"if": {"filter_query": '{status} = "Pending"'}, "color": "#ff9800"},
-        {"if": {"filter_query": '{status} = "Failed"'}, "color": "#f44336"},
+        {"if": {"filter_query": '{status} = "Running"'}, "color": "var(--success)"},
+        {"if": {"filter_query": '{status} = "Pending"'}, "color": "var(--warning)"},
+        {"if": {"filter_query": '{status} = "Failed"'}, "color": "var(--danger)"},
     ],
     detail_fields=[
         DetailField(
@@ -456,6 +462,7 @@ SERVICES = ResourceDescriptor(
     ),
     get_fn=_get("core", "read_namespaced_service"),
     delete_fn=_delete("core", "delete_namespaced_service"),
+    supports_forward=True,
     columns=[
         Column("Name", _NAME),
         Column("Namespace", _NS),
@@ -583,8 +590,8 @@ NODES = ResourceDescriptor(
         Column("Age", _AGE),
     ],
     table_conditional=[
-        {"if": {"filter_query": '{status} = "Ready"'}, "color": "#4caf50"},
-        {"if": {"filter_query": '{status} = "NotReady"'}, "color": "#f44336"},
+        {"if": {"filter_query": '{status} = "Ready"'}, "color": "var(--success)"},
+        {"if": {"filter_query": '{status} = "NotReady"'}, "color": "var(--danger)"},
     ],
     detail_fields=_common_details(namespaced=False)
     + [
@@ -612,11 +619,232 @@ NAMESPACES = ResourceDescriptor(
         Column("Age", _AGE),
     ],
     table_conditional=[
-        {"if": {"filter_query": '{status} = "Active"'}, "color": "#4caf50"},
-        {"if": {"filter_query": '{status} = "Terminating"'}, "color": "#ff9800"},
+        {"if": {"filter_query": '{status} = "Active"'}, "color": "var(--success)"},
+        {"if": {"filter_query": '{status} = "Terminating"'}, "color": "var(--warning)"},
     ],
     detail_fields=_common_details(namespaced=False)
     + [DetailField("Status", lambda n: n.status.phase, "status")],
+)
+
+
+def _ingress_hosts(ing) -> str:
+    hosts = [r.host for r in ing.spec.rules or [] if r.host]
+    return ", ".join(hosts) or "N/A"
+
+
+def _ingress_lb(ing) -> str:
+    entries = []
+    for ing_lb in ing.status.load_balancer.ingress or []:
+        entries.append(ing_lb.ip or ing_lb.hostname or "")
+    return ", ".join(e for e in entries if e) or "Pending"
+
+
+def _endpoint_addresses(ep) -> list[str]:
+    out = []
+    for subset in ep.subsets or []:
+        for addr in subset.addresses or []:
+            ports = ", ".join(str(p.port) for p in subset.ports or []) or "*"
+            out.append(f"{addr.ip}:{ports}")
+    return out or ["N/A"]
+
+
+def _event_object(ev) -> str:
+    obj = ev.involved_object
+    return f"{obj.kind} {obj.namespace}/{obj.name}" if obj else "N/A"
+
+
+# --------------------------------------------------------------------------- #
+# Network (networking.k8s.io/v1).
+# --------------------------------------------------------------------------- #
+INGRESSES = ResourceDescriptor(
+    key="ingresses",
+    label="Ingresses",
+    list_fn=_ns_list(
+        "networking", "list_ingress_for_all_namespaces", "list_namespaced_ingress"
+    ),
+    get_fn=_get("networking", "read_namespaced_ingress"),
+    delete_fn=_delete("networking", "delete_namespaced_ingress"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Hosts", _ingress_hosts),
+        Column("Load Balancer", _ingress_lb),
+        Column("TLS", lambda i: len(i.spec.tls or [])),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details()
+    + [
+        DetailField("Class Name", lambda i: i.spec.ingress_class_name or "N/A"),
+        DetailField("Hosts", lambda i: [r.host for r in i.spec.rules or [] if r.host] or ["N/A"], "list"),
+        DetailField("TLS", lambda i: [t.hosts for t in i.spec.tls or [] if t.hosts] or ["N/A"], "list"),
+        DetailField("Load Balancer", _ingress_lb, "status"),
+    ],
+)
+
+NETWORKPOLICIES = ResourceDescriptor(
+    key="networkpolicies",
+    label="Network Policies",
+    list_fn=_ns_list(
+        "networking",
+        "list_network_policy_for_all_namespaces",
+        "list_namespaced_network_policy",
+    ),
+    get_fn=_get("networking", "read_namespaced_network_policy"),
+    delete_fn=_delete("networking", "delete_namespaced_network_policy"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Pod Selector", lambda p: fmt.joined_labels(p.spec.pod_selector.match_labels)),
+        Column("Policy Types", lambda p: ", ".join(p.spec.policy_types or [])),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details()
+    + [
+        DetailField("Pod Selector", lambda p: fmt.key_value_pairs(p.spec.pod_selector.match_labels), "list"),
+        DetailField("Policy Types", lambda p: p.spec.policy_types or ["N/A"], "list"),
+        DetailField("Ingress Rules", lambda p: len(p.spec.ingress or [])),
+        DetailField("Egress Rules", lambda p: len(p.spec.egress or [])),
+    ],
+)
+
+ENDPOINTS = ResourceDescriptor(
+    key="endpoints",
+    label="Endpoints",
+    list_fn=_ns_list(
+        "core", "list_endpoints_for_all_namespaces", "list_namespaced_endpoints"
+    ),
+    get_fn=_get("core", "read_namespaced_endpoints"),
+    delete_fn=_delete("core", "delete_namespaced_endpoints"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Endpoints", lambda e: sum(
+            len(s.addresses or []) for s in e.subsets or []
+        )),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details()
+    + [DetailField("Addresses", _endpoint_addresses, "list")],
+)
+
+
+# --------------------------------------------------------------------------- #
+# Config (autoscaling/v1, storage.k8s.io/v1, core/v1).
+# --------------------------------------------------------------------------- #
+HPAS = ResourceDescriptor(
+    key="hpa",
+    label="Horizontal Pod Autoscalers",
+    list_fn=_ns_list(
+        "autoscaling",
+        "list_horizontal_pod_autoscaler_for_all_namespaces",
+        "list_namespaced_horizontal_pod_autoscaler",
+    ),
+    get_fn=_get("autoscaling", "read_namespaced_horizontal_pod_autoscaler"),
+    delete_fn=_delete("autoscaling", "delete_namespaced_horizontal_pod_autoscaler"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Target", lambda h: f"{h.spec.scale_target_ref.kind}/{h.spec.scale_target_ref.name}"),
+        Column("Min", lambda h: h.spec.min_replicas or 1),
+        Column("Max", lambda h: h.spec.max_replicas),
+        Column("Replicas", lambda h: h.status.current_replicas),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details()
+    + [
+        DetailField("Scale Target", lambda h: f"{h.spec.scale_target_ref.kind} {h.spec.scale_target_ref.name}"),
+        DetailField("Min Replicas", lambda h: h.spec.min_replicas or 1),
+        DetailField("Max Replicas", lambda h: h.spec.max_replicas),
+        DetailField(
+            "Replicas",
+            lambda h: f"{h.status.current_replicas} current / {h.status.desired_replicas} desired",
+        ),
+    ],
+)
+
+STORAGECLASSES = ResourceDescriptor(
+    key="storageclasses",
+    label="Storage Classes",
+    namespaced=False,
+    list_fn=_cluster_list("storage", "list_storage_class"),
+    get_fn=_get("storage", "read_storage_class", namespaced=False),
+    delete_fn=_delete("storage", "delete_storage_class", namespaced=False),
+    columns=[
+        Column("Name", _NAME),
+        Column("Provisioner", lambda s: s.provisioner),
+        Column("Reclaim Policy", lambda s: s.reclaim_policy),
+        Column("Volume Binding Mode", lambda s: s.volume_binding_mode or "N/A"),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details(namespaced=False)
+    + [
+        DetailField("Provisioner", lambda s: s.provisioner),
+        DetailField("Reclaim Policy", lambda s: s.reclaim_policy),
+        DetailField("Volume Binding Mode", lambda s: s.volume_binding_mode or "N/A"),
+        DetailField("Allow Volume Expansion", lambda s: bool(s.allow_volume_expansion)),
+        DetailField("Parameters", lambda s: fmt.key_value_pairs(s.parameters) or ["N/A"], "list"),
+    ],
+)
+
+SERVICEACCOUNTS = ResourceDescriptor(
+    key="serviceaccounts",
+    label="Service Accounts",
+    list_fn=_ns_list(
+        "core",
+        "list_service_account_for_all_namespaces",
+        "list_namespaced_service_account",
+    ),
+    get_fn=_get("core", "read_namespaced_service_account"),
+    delete_fn=_delete("core", "delete_namespaced_service_account"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Secrets", lambda s: len(s.secrets or [])),
+        Column("Age", _AGE),
+    ],
+    detail_fields=_common_details()
+    + [
+        DetailField("Secrets", lambda s: [sec.name for sec in s.secrets or []] or ["N/A"], "list"),
+        DetailField(
+            "Image Pull Secrets",
+            lambda s: [sec.name for sec in s.image_pull_secrets or []] or ["N/A"],
+            "list",
+        ),
+        DetailField("Automount Token", lambda s: s.automount_service_account_token),
+    ],
+)
+
+
+# --------------------------------------------------------------------------- #
+# Events (core/v1) — read-only, transient.
+# --------------------------------------------------------------------------- #
+EVENTS = ResourceDescriptor(
+    key="events",
+    label="Events",
+    list_fn=_ns_list("core", "list_event_for_all_namespaces", "list_namespaced_event"),
+    get_fn=_get("core", "read_namespaced_event"),
+    columns=[
+        Column("Name", _NAME),
+        Column("Namespace", _NS),
+        Column("Type", lambda e: e.type),
+        Column("Reason", lambda e: e.reason or "N/A"),
+        Column("Object", _event_object),
+        Column("Count", lambda e: e.count or 0),
+        Column("Age", lambda e: fmt.age_short(e.first_timestamp or e.metadata.creation_timestamp)),
+    ],
+    table_conditional=[
+        {"if": {"filter_query": '{type} = "Normal"'}, "color": "var(--success)"},
+        {"if": {"filter_query": '{type} = "Warning"'}, "color": "var(--warning)"},
+    ],
+    detail_fields=_common_details()
+    + [
+        DetailField("Type", lambda e: e.type, "status"),
+        DetailField("Reason", lambda e: e.reason or "N/A"),
+        DetailField("Message", lambda e: e.message or "N/A"),
+        DetailField("Object", _event_object),
+        DetailField("Count", lambda e: e.count or 0),
+        DetailField("Source", lambda e: e.source.component or "N/A"),
+    ],
 )
 
 
@@ -624,6 +852,8 @@ NAMESPACES = ResourceDescriptor(
 _ALL = [
     PODS, DEPLOYMENTS, DAEMONSETS, STATEFULSETS, REPLICASETS, JOBS, CRONJOBS,
     SERVICES, CONFIGMAPS, SECRETS, PVCS, PVS, NODES, NAMESPACES,
+    INGRESSES, NETWORKPOLICIES, ENDPOINTS, HPAS, STORAGECLASSES,
+    SERVICEACCOUNTS, EVENTS,
 ]
 REGISTRY: dict[str, ResourceDescriptor] = {d.key: d for d in _ALL}
 
@@ -666,7 +896,13 @@ def _item(label: str, key: str | None = None) -> MenuItem:
 
 
 MENU: tuple[MenuGroup, ...] = (
-    MenuGroup("Cluster"),
+    MenuGroup(
+        "Cluster",
+        (
+            _item("Service Accounts", "serviceaccounts"),
+            _item("Events", "events"),
+        ),
+    ),
     MenuGroup("Nodes", (_item("Nodes", "nodes"),)),
     MenuGroup(
         "Workloads",
@@ -689,7 +925,7 @@ MENU: tuple[MenuGroup, ...] = (
             _item("Secrets", "secrets"),
             _item("Resource Quotas"),
             _item("Limit Ranges"),
-            _item("HPA"),
+            _item("HPA", "hpa"),
             _item("Pod Disruption Budgets"),
             _item("Priority Classes"),
             _item("Runtime Classes"),
@@ -702,10 +938,10 @@ MENU: tuple[MenuGroup, ...] = (
         "Network",
         (
             _item("Services", "services"),
-            _item("Endpoints"),
-            _item("Ingresses"),
+            _item("Endpoints", "endpoints"),
+            _item("Ingresses", "ingresses"),
             _item("Ingress Classes"),
-            _item("Network Policies"),
+            _item("Network Policies", "networkpolicies"),
             _item("Port Forwarding"),
         ),
     ),
@@ -714,11 +950,10 @@ MENU: tuple[MenuGroup, ...] = (
         (
             _item("Persistent Volume Claims", "persistentvolumeclaims"),
             _item("Persistent Volumes", "persistentvolumes"),
-            _item("Storage Classes"),
+            _item("Storage Classes", "storageclasses"),
         ),
     ),
     MenuGroup("Namespaces", (_item("Namespaces", "namespaces"),)),
-    MenuGroup("Events"),
     MenuGroup("Helm", href="/helm"),
     MenuGroup("Access Control"),
     MenuGroup("Custom Resources", href="/crd"),

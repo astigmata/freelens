@@ -51,7 +51,7 @@ def _run(args: list[str], *, as_json: bool = False, stdin: str | None = None):
     if not available():
         raise HelmError("The 'helm' CLI was not found on PATH.")
     try:
-        proc = subprocess.run(  # noqa: S603 — args are app-controlled
+        proc = subprocess.run(
             [HELM_BIN, *_impersonation_flags(), *args],
             capture_output=True,
             text=True,

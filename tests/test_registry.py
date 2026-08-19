@@ -8,8 +8,10 @@ import pytest
 from freelens.k8s import formatters as fmt
 from freelens.k8s.registry import (
     DEFAULT_RESOURCE,
+    MENU,
     REGISTRY,
     Column,
+    list_rows,
     resource_from_path,
 )
 
@@ -41,8 +43,15 @@ def test_namespaced_resources_expose_a_namespace_column():
 
 
 def test_cluster_scoped_resources_are_marked_non_namespaced():
-    for key in ("nodes", "namespaces", "persistentvolumes"):
+    for key in ("nodes", "namespaces", "persistentvolumes", "storageclasses"):
         assert REGISTRY[key].namespaced is False
+
+
+def test_every_registry_key_is_reachable_from_the_menu():
+    implemented = {
+        item.key for group in MENU for item in group.items if item.implemented
+    }
+    assert implemented == set(REGISTRY)
 
 
 def test_write_actions_are_wired_to_the_expected_resources():
@@ -52,6 +61,44 @@ def test_write_actions_are_wired_to_the_expected_resources():
     assert REGISTRY["pods"].supports_logs is True
     # No accidental write actions on a read-only resource.
     assert REGISTRY["configmaps"].actions == ()
+    # Events are transient and should never be deletable from the UI.
+    assert REGISTRY["events"].delete_fn is None
+
+
+def test_list_rows_adds_stable_unique_row_ids():
+    pod = SimpleNamespace(
+        metadata=SimpleNamespace(
+            name="web-0",
+            namespace="default",
+            owner_references=None,
+            creation_timestamp=datetime.datetime.now(datetime.timezone.utc),
+        ),
+        spec=SimpleNamespace(containers=[1, 2], node_name="node-1"),
+        status=SimpleNamespace(
+            container_statuses=[SimpleNamespace(ready=True, restart_count=0)],
+            qos_class="BestEffort",
+            phase="Running",
+        ),
+    )
+    core = SimpleNamespace(
+        list_namespaced_pod=lambda ns, watch=False: SimpleNamespace(items=[pod])
+    )
+    rows, status = list_rows(REGISTRY["pods"], "default", SimpleNamespace(core=core))
+    assert status == "Connected"
+    assert rows == [{"name": "web-0", "namespace": "default", "id": "default/web-0",
+                     "containers": "1/2", "restarts": "0", "controlled_by": "N/A",
+                     "node": "node-1", "qos": "BestEffort", "age": "0s",
+                     "status": "Running"}]
+
+
+def test_new_network_config_storage_resources_are_wired():
+    for key in ("ingresses", "networkpolicies", "endpoints", "hpa",
+                "storageclasses", "serviceaccounts", "events"):
+        descriptor = REGISTRY[key]
+        assert descriptor.list_fn is not None, key
+        assert descriptor.get_fn is not None, key
+        assert descriptor.columns, key
+        assert descriptor.detail_fields, key
 
 
 def test_age_short_handles_days_and_hours():

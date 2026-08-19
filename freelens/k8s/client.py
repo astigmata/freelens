@@ -21,6 +21,9 @@ class Clients:
     core: client.CoreV1Api
     apps: client.AppsV1Api
     batch: client.BatchV1Api
+    networking: client.NetworkingV1Api  # Ingress, NetworkPolicy
+    autoscaling: client.AutoscalingV1Api  # HorizontalPodAutoscaler
+    storage: client.StorageV1Api  # StorageClass
     apiext: client.ApiextensionsV1Api  # CustomResourceDefinition discovery
     custom: client.CustomObjectsApi  # dynamic access to CRD instances
 
@@ -41,6 +44,9 @@ def _clients_from_api(api: client.ApiClient) -> Clients:
         core=client.CoreV1Api(api),
         apps=client.AppsV1Api(api),
         batch=client.BatchV1Api(api),
+        networking=client.NetworkingV1Api(api),
+        autoscaling=client.AutoscalingV1Api(api),
+        storage=client.StorageV1Api(api),
         apiext=client.ApiextensionsV1Api(api),
         custom=client.CustomObjectsApi(api),
     )

@@ -1,62 +1,153 @@
 /* ===========================================================================
-   Freelens — dark theme
+   Freelens — Claude design language
+   Warm, paper-toned palette with a terracotta accent. Two themes share one set
+   of class names; only the CSS custom properties below switch between them.
+   Light is the default; `:root[data-theme="dark"]` swaps in the dark palette.
+   The theme is set on <html> before first paint (see app.py index_string) so
+   there is no flash, and persisted in localStorage by the header toggle.
    =========================================================================== */
+
+/* ---- Light theme (default) ------------------------------------------------ */
 :root {
-    --bg: #1a1c20;
-    --bg-elev: #24272c;
-    --bg-elev-2: #2c3036;
-    --sidebar-bg: #202327;
-    --panel-bg: #24272c;
-    --code-bg: #15171a;
-    --border: #34383e;
-    --border-soft: #2c3036;
-    --text: #e4e6eb;
-    --text-muted: #9aa0a6;
-    --accent: #3d90ce;
-    --accent-hover: #4ea0de;
-    --accent-soft: rgba(61, 144, 206, 0.15);
-    --green: #4caf50;
-    --orange: #ff9800;
-    --red: #f4554a;
-    --danger: #b3382c;
-    --danger-hover: #cf4438;
-    --radius: 8px;
-    --radius-sm: 6px;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.4);
-    --transition: 0.15s ease;
+    --bg: #f4f2ec;
+    --bg-subtle: #ece9df;
+    --surface: #ffffff;
+    --surface-2: #faf8f2;
+    --sidebar-bg: #efece2;
+    --code-bg: #f3f0e8;
+    --code-fg: #45433b;
+
+    --border: #e3dfd2;
+    --border-soft: #ece9df;
+
+    --text: #2c2b26;
+    --text-muted: #74726a;
+    --text-faint: #a8a59a;
+
+    --accent: #c15f3c;
+    --accent-hover: #ad5232;
+    --accent-soft: rgba(193, 95, 60, 0.12);
+    --accent-line: rgba(193, 95, 60, 0.28);
+    --on-accent: #ffffff;
+
+    --success: #3d8a5b;
+    --success-soft: rgba(61, 138, 91, 0.13);
+    --warning: #b3762c;
+    --warning-soft: rgba(179, 118, 44, 0.14);
+    --danger: #bf4a30;
+    --danger-soft: rgba(191, 74, 48, 0.12);
+    --danger-hover: #a73f28;
+
+    /* DataTable (rendered via inline style props in layout.py) */
+    --table-header-bg: #f1eee5;
+    --table-header-fg: #74726a;
+    --table-cell-bg: #ffffff;
+    --table-cell-fg: #2c2b26;
+    --table-border: #ece9df;
+    --row-odd-bg: #faf8f2;
+    --row-hover-bg: #f4efe7;
+    --filter-bg: #f1eee5;
+    --filter-fg: #2c2b26;
+
+    /* Form controls */
+    --input-bg: #ffffff;
+    --menu-bg: #ffffff;
+
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-pill: 999px;
+    --shadow: 0 1px 2px rgba(60, 50, 40, 0.05), 0 4px 14px rgba(60, 50, 40, 0.07);
+    --shadow-lg: 0 8px 30px rgba(60, 50, 40, 0.14);
+    --transition: 0.16s ease;
+
+    --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+
+/* ---- Dark theme ----------------------------------------------------------- */
+:root[data-theme="dark"] {
+    --bg: #262421;
+    --bg-subtle: #2d2b27;
+    --surface: #302f2c;
+    --surface-2: #35342f;
+    --sidebar-bg: #201e1b;
+    --code-bg: #1c1b18;
+    --code-fg: #d7d3c8;
+
+    --border: #403d38;
+    --border-soft: #35332e;
+
+    --text: #ece9e1;
+    --text-muted: #a8a59b;
+    --text-faint: #76746b;
+
+    --accent: #d97757;
+    --accent-hover: #e2876a;
+    --accent-soft: rgba(217, 119, 87, 0.16);
+    --accent-line: rgba(217, 119, 87, 0.4);
+    --on-accent: #2a1a11;
+
+    --success: #6fbf8b;
+    --success-soft: rgba(111, 191, 139, 0.15);
+    --warning: #e0a35c;
+    --warning-soft: rgba(224, 163, 92, 0.15);
+    --danger: #e07a5f;
+    --danger-soft: rgba(224, 122, 95, 0.16);
+    --danger-hover: #e88a70;
+
+    --table-header-bg: #2b2a26;
+    --table-header-fg: #a8a59b;
+    --table-cell-bg: #2e2d29;
+    --table-cell-fg: #ece9e1;
+    --table-border: #3a3833;
+    --row-odd-bg: #2a2925;
+    --row-hover-bg: #38362f;
+    --filter-bg: #2b2a26;
+    --filter-fg: #ece9e1;
+
+    --input-bg: #2e2d29;
+    --menu-bg: #35342f;
+
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.28), 0 8px 22px rgba(0, 0, 0, 0.22);
+    --shadow-lg: 0 12px 34px rgba(0, 0, 0, 0.45);
 }
 
 * {
     box-sizing: border-box;
 }
 
+html,
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg);
+}
+
+body {
+    font-family: var(--font-sans);
     margin: 0;
     padding: 0;
-    background-color: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background-color var(--transition), color var(--transition);
 }
 
 /* Scrollbars */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #3a3f46 transparent;
+    scrollbar-color: var(--border) transparent;
 }
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-    background: #3a3f46;
+    background: var(--border);
     border-radius: 6px;
     border: 2px solid transparent;
     background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #4a505a;
+    background: var(--text-faint);
     background-clip: content-box;
 }
 
@@ -69,44 +160,84 @@ body {
    Sidebar
    =========================================================================== */
 .sidebar {
-    width: 250px;
+    width: 248px;
     flex-shrink: 0;
     background-color: var(--sidebar-bg);
     color: var(--text);
     overflow-y: auto;
     border-right: 1px solid var(--border);
     padding-bottom: 16px;
+    display: flex;
+    flex-direction: column;
 }
-.sidebar img {
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+
+/* Brand wordmark — replaces the old bitmap logo. */
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 20px 18px 16px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-soft);
 }
+.sidebar-brand-mark {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: linear-gradient(150deg, var(--accent), var(--accent-hover));
+    color: var(--on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px var(--accent-soft);
+}
+.sidebar-brand-text {
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+.sidebar-brand-text b {
+    font-weight: 700;
+}
+
 .sidebar-nav {
-    padding: 4px 8px;
+    padding: 8px 10px;
+}
+.sidebar-section {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-faint);
+    padding: 14px 12px 6px;
 }
 .sidebar-item {
-    padding: 10px 12px;
+    padding: 9px 12px;
     margin: 1px 0;
     border-radius: var(--radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13.5px;
     color: var(--text);
     text-decoration: none;
     transition: background-color var(--transition), color var(--transition);
 }
 .sidebar-item:hover {
-    background-color: var(--bg-elev-2);
-    color: var(--text);
+    background-color: var(--bg-subtle);
 }
 .sidebar-item.active {
-    color: #fff;
+    color: var(--accent);
     background-color: var(--accent-soft);
 }
 .sidebar-subitems {
     padding-left: 8px;
-    margin: 2px 0 6px;
+    margin: 1px 0 6px;
 }
 .sidebar-subitem {
     position: relative;
@@ -117,15 +248,15 @@ body {
     text-decoration: none;
     display: block;
     color: var(--text-muted);
-    font-size: 13.5px;
+    font-size: 13px;
     transition: background-color var(--transition), color var(--transition);
 }
 .sidebar-subitem:hover {
-    background-color: var(--bg-elev-2);
+    background-color: var(--bg-subtle);
     color: var(--text);
 }
 .sidebar-subitem.active {
-    color: #fff;
+    color: var(--accent);
     background-color: var(--accent-soft);
     font-weight: 600;
 }
@@ -141,14 +272,14 @@ body {
 }
 .sidebar-item.disabled,
 .sidebar-subitem.disabled {
-    color: #5e636b;
+    color: var(--text-faint);
     cursor: default;
     font-weight: 500;
 }
 .sidebar-item.disabled:hover,
 .sidebar-subitem.disabled:hover {
     background-color: transparent;
-    color: #5e636b;
+    color: var(--text-faint);
 }
 
 /* ===========================================================================
@@ -156,7 +287,7 @@ body {
    =========================================================================== */
 .main-content {
     flex: 1;
-    padding: 24px 28px;
+    padding: 26px 30px;
     overflow-y: auto;
     background-color: var(--bg);
 }
@@ -165,7 +296,7 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
     flex-wrap: wrap;
 }
 .page-title-group {
@@ -174,19 +305,20 @@ body {
     gap: 12px;
 }
 .page-title {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 25px;
+    font-weight: 680;
     margin: 0;
     color: var(--text);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
 }
 .row-count {
     color: var(--text-muted);
-    font-size: 13px;
-    background-color: var(--bg-elev);
-    padding: 2px 10px;
-    border-radius: 10px;
-    border: 1px solid var(--border-soft);
+    font-size: 12.5px;
+    font-weight: 600;
+    background-color: var(--surface);
+    padding: 3px 11px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
 }
 .header-controls {
     display: flex;
@@ -197,20 +329,22 @@ body {
 .cluster-context {
     color: var(--text-muted);
     font-size: 12.5px;
-    padding: 5px 10px;
+    font-weight: 500;
+    padding: 6px 11px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background-color: var(--bg-elev);
+    background-color: var(--surface);
 }
 .status-badge {
     font-size: 12.5px;
     font-weight: 600;
     padding: 5px 12px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
+    border: 1px solid transparent;
 }
 .status-badge::before {
     content: "";
@@ -218,26 +352,53 @@ body {
     height: 7px;
     border-radius: 50%;
     background-color: currentColor;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
 }
 .status-badge.connected {
-    background-color: rgba(76, 175, 80, 0.16);
-    color: var(--green);
+    background-color: var(--success-soft);
+    color: var(--success);
 }
 .status-badge.error {
-    background-color: rgba(244, 85, 74, 0.16);
-    color: var(--red);
+    background-color: var(--danger-soft);
+    color: var(--danger);
 }
 .autorefresh-toggle {
     color: var(--text-muted);
-    font-size: 13.5px;
+    font-size: 13px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     cursor: pointer;
     user-select: none;
+    padding: 0 4px;
 }
 .autorefresh-toggle input {
     accent-color: var(--accent);
     cursor: pointer;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    line-height: 1;
+    background-color: var(--surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition), border-color var(--transition);
+}
+.theme-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent-line);
+    background-color: var(--accent-soft);
 }
 
 /* Inputs / dropdown */
@@ -248,49 +409,61 @@ body {
     min-width: 340px;
 }
 
-/* dcc.Dropdown (react-select) — dark theme so menus aren't white-on-white */
-.Select-control {
-    background-color: var(--bg-elev) !important;
+/* dcc.Dropdown (react-select) — themed so menus follow light/dark */
+.Select-control,
+.Select__control {
+    background-color: var(--input-bg) !important;
     border: 1px solid var(--border) !important;
     border-radius: var(--radius-sm) !important;
     color: var(--text) !important;
 }
-.Select-control:hover {
-    border-color: var(--accent) !important;
+.Select-control:hover,
+.Select__control:hover {
+    border-color: var(--accent-line) !important;
 }
-.Select.is-focused:not(.is-open) > .Select-control {
+.Select.is-focused:not(.is-open) > .Select-control,
+.Select__control--is-focused {
     border-color: var(--accent) !important;
-    box-shadow: 0 0 0 2px var(--accent-soft) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft) !important;
 }
 .Select-value-label,
 .Select--single > .Select-control .Select-value .Select-value-label,
-.Select-input > input {
+.Select-input > input,
+.Select__single-value,
+.Select__input-container,
+.Select__input {
     color: var(--text) !important;
 }
-.Select-placeholder {
-    color: var(--text-muted) !important;
+.Select-placeholder,
+.Select__placeholder {
+    color: var(--text-faint) !important;
 }
-.Select-menu-outer {
-    background-color: var(--bg-elev-2) !important;
+.Select-menu-outer,
+.Select__menu {
+    background-color: var(--menu-bg) !important;
     border: 1px solid var(--border) !important;
     border-radius: var(--radius-sm) !important;
     box-shadow: var(--shadow) !important;
     z-index: 1000 !important;
+    overflow: hidden;
 }
-.Select-option {
-    background-color: var(--bg-elev-2) !important;
+.Select-option,
+.Select__option {
+    background-color: var(--menu-bg) !important;
     color: var(--text) !important;
 }
-.Select-option.is-focused {
+.Select-option.is-focused,
+.Select__option--is-focused {
     background-color: var(--accent-soft) !important;
-    color: #fff !important;
+    color: var(--accent) !important;
 }
-.Select-option.is-selected {
+.Select-option.is-selected,
+.Select__option--is-selected {
     background-color: var(--accent) !important;
-    color: #fff !important;
+    color: var(--on-accent) !important;
 }
 .Select-noresults {
-    background-color: var(--bg-elev-2) !important;
+    background-color: var(--menu-bg) !important;
     color: var(--text-muted) !important;
 }
 .Select-arrow {
@@ -300,44 +473,20 @@ body {
 .Select-clear-zone:hover .Select-clear {
     color: var(--text-muted) !important;
 }
-/* Newer react-select markup (Select__*), in case dcc uses it */
-.Select__control {
-    background-color: var(--bg-elev) !important;
-    border-color: var(--border) !important;
-    color: var(--text) !important;
-}
-.Select__single-value,
-.Select__input-container,
-.Select__input {
-    color: var(--text) !important;
-}
-.Select__placeholder {
-    color: var(--text-muted) !important;
-}
-.Select__menu {
-    background-color: var(--bg-elev-2) !important;
-    border: 1px solid var(--border) !important;
-}
-.Select__option {
-    background-color: var(--bg-elev-2) !important;
-    color: var(--text) !important;
-}
-.Select__option--is-focused {
-    background-color: var(--accent-soft) !important;
-    color: #fff !important;
-}
-.Select__option--is-selected {
-    background-color: var(--accent) !important;
-    color: #fff !important;
-}
+
 .search-input,
 .action-value {
-    padding: 8px 10px;
+    padding: 8px 11px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    background-color: var(--bg-elev);
+    background-color: var(--input-bg);
     color: var(--text);
+    font-size: 13.5px;
     transition: border-color var(--transition), box-shadow var(--transition);
+}
+.search-input::placeholder,
+.action-value::placeholder {
+    color: var(--text-faint);
 }
 .search-input {
     width: 200px;
@@ -346,23 +495,23 @@ body {
 .action-value:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .action-value {
-    width: 80px;
+    width: 84px;
 }
 
 /* Buttons */
 .action-button {
     padding: 8px 16px;
     background-color: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
-    transition: background-color var(--transition), transform var(--transition);
+    transition: background-color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 .action-button:hover {
     background-color: var(--accent-hover);
@@ -370,8 +519,13 @@ body {
 .action-button:active {
     transform: translateY(1px);
 }
+.action-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .action-button.destructive {
     background-color: var(--danger);
+    color: #fff;
 }
 .action-button.destructive:hover {
     background-color: var(--danger-hover);
@@ -381,32 +535,38 @@ body {
    Table
    =========================================================================== */
 .table-container {
-    background-color: var(--panel-bg);
+    background-color: var(--surface);
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
     width: 100%;
-    /* Let wide tables (e.g. Pods' 9 columns) scroll horizontally instead of
-       being clipped; vertical stays hidden since the table paginates. */
     overflow-x: auto;
     overflow-y: hidden;
+    padding: 4px;
 }
 .dash-spreadsheet-container .dash-spreadsheet-inner table {
     border-collapse: collapse;
 }
 .dash-spreadsheet tr:hover td.dash-cell {
-    background-color: #313640 !important;
-    color: #fff !important;
+    background-color: var(--row-hover-bg) !important;
+    color: var(--text) !important;
 }
+/* Selected / clicked cell: a soft tinted highlight with an accent outline
+   instead of a saturated terracotta fill (which reads as a garish block). */
 .dash-spreadsheet td.dash-cell.focused {
-    background-color: var(--accent) !important;
-    color: #fff !important;
-    border-color: var(--accent-hover) !important;
+    background-color: var(--accent-soft) !important;
+    color: var(--text) !important;
+    box-shadow: inset 0 0 0 1px var(--accent-line) !important;
+    border-color: var(--accent-line) !important;
 }
 /* Pagination + filter controls */
 .dash-table-container .previous-next-container .page-number,
+.dash-table-container .previous-next-container button,
 .dash-table-container .dash-filter input {
     color: var(--text) !important;
+}
+.dash-table-container .previous-next-container button:hover {
+    color: var(--accent) !important;
 }
 .dash-spreadsheet-menu {
     margin-bottom: 6px;
@@ -416,7 +576,7 @@ body {
    Detail panel
    =========================================================================== */
 .detail-panel {
-    margin-top: 24px;
+    margin-top: 26px;
 }
 .detail-actions {
     display: flex;
@@ -433,7 +593,7 @@ body {
 }
 .action-result {
     margin-bottom: 12px;
-    font-size: 13.5px;
+    font-size: 13px;
     color: var(--text-muted);
 }
 
@@ -450,6 +610,7 @@ body {
     border-bottom: 2px solid transparent !important;
     padding: 10px 18px !important;
     font-weight: 600 !important;
+    font-size: 13.5px !important;
     transition: color var(--transition), border-color var(--transition) !important;
 }
 .detail-tab:hover {
@@ -461,27 +622,29 @@ body {
     border-bottom: 2px solid var(--accent) !important;
 }
 
-/* Overview card */
-.pod-details, .deployment-details {
+/* Overview / generic detail card */
+.pod-details,
+.deployment-details {
     margin-top: 16px;
-    background-color: var(--panel-bg);
+    background-color: var(--surface);
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
-    padding: 24px;
+    padding: 24px 26px;
 }
 .pod-details h3 {
-    margin: 0 0 20px;
-    font-size: 18px;
-    font-weight: 700;
-    padding-bottom: 12px;
+    margin: 0 0 18px;
+    font-size: 17px;
+    font-weight: 680;
+    letter-spacing: -0.01em;
+    padding-bottom: 14px;
     border-bottom: 1px solid var(--border-soft);
 }
 .detail-row {
     display: flex;
     align-items: flex-start;
-    padding: 7px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-soft);
 }
 .detail-row:last-child {
     border-bottom: none;
@@ -489,20 +652,33 @@ body {
 .detail-label {
     font-weight: 600;
     color: var(--text-muted);
-    width: 180px;
+    width: 184px;
     flex-shrink: 0;
-    font-size: 13.5px;
+    font-size: 13px;
 }
 .detail-value {
     color: var(--text);
-    font-size: 13.5px;
+    font-size: 13px;
     word-break: break-word;
+}
+.forward-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+.forward-link:hover {
+    text-decoration: underline;
+}
+.forward-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 8px 0;
 }
 .detail-list {
     margin: 0;
     padding-left: 18px;
     color: var(--text);
-    font-size: 13.5px;
+    font-size: 13px;
 }
 .detail-list li {
     margin: 2px 0;
@@ -513,22 +689,22 @@ body {
 .status-pending,
 .status-failed {
     display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 12.5px;
+    padding: 2px 11px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
     font-weight: 600;
 }
 .status-running {
-    color: var(--green);
-    background-color: rgba(76, 175, 80, 0.15);
+    color: var(--success);
+    background-color: var(--success-soft);
 }
 .status-pending {
-    color: var(--orange);
-    background-color: rgba(255, 152, 0, 0.15);
+    color: var(--warning);
+    background-color: var(--warning-soft);
 }
 .status-failed {
-    color: var(--red);
-    background-color: rgba(244, 85, 74, 0.15);
+    color: var(--danger);
+    background-color: var(--danger-soft);
 }
 
 /* ===========================================================================
@@ -546,7 +722,7 @@ body {
     gap: 6px;
 }
 .helm-field-label {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
 }
@@ -561,8 +737,8 @@ body {
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background-color: var(--code-bg);
-    color: var(--text);
-    font-family: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, monospace;
+    color: var(--code-fg);
+    font-family: var(--font-mono);
     font-size: 12.5px;
     line-height: 1.5;
     resize: vertical;
@@ -571,7 +747,7 @@ body {
 .helm-values-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* ===========================================================================
@@ -582,22 +758,23 @@ body {
     background-color: var(--code-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 16px 18px;
     margin-top: 16px;
     max-height: 520px;
     overflow: auto;
-    font-family: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 12.5px;
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    color: #cdd3da;
+    color: var(--code-fg);
 }
 .logs-controls {
     display: flex;
     gap: 10px;
     align-items: center;
     margin-top: 16px;
+    flex-wrap: wrap;
 }
 .logs-controls .namespace-selector {
     width: 260px;
@@ -608,7 +785,7 @@ body {
     margin-top: 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background-color: var(--code-bg);
+    background-color: #1c1b18;
 }
 
 /* Bulk-actions toolbar (multi-select delete) */
@@ -622,18 +799,17 @@ body {
     display: none;
 }
 .detail-error {
-    color: var(--red);
+    color: var(--danger);
     margin-top: 16px;
     padding: 12px 16px;
-    background-color: rgba(244, 85, 74, 0.1);
-    border: 1px solid rgba(244, 85, 74, 0.3);
+    background-color: var(--danger-soft);
+    border: 1px solid var(--danger);
     border-radius: var(--radius-sm);
 }
 
 /* ===========================================================================
    Responsive layout
    =========================================================================== */
-/* Mobile drawer controls are hidden on wide screens. */
 .sidebar-toggle {
     display: none;
 }
@@ -676,12 +852,13 @@ body {
     }
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: var(--shadow-lg);
     }
     .sidebar-overlay {
         display: block;
         position: fixed;
         inset: 0;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(20, 16, 12, 0.45);
         z-index: 1080;
     }
     .main-content {

@@ -48,8 +48,8 @@ _TERMINAL_PAGE = """<!doctype html>
 <script src="/assets/vendor/xterm.min.js"></script>
 <script src="/assets/vendor/xterm-addon-fit.min.js"></script>
 <style>
-  html, body { margin: 0; height: 100%; background: #15171a; }
-  #term { height: 100%; width: 100%; padding: 6px; box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #1c1b18; }
+  #term { height: 100%; width: 100%; padding: 8px; box-sizing: border-box; }
 </style>
 </head>
 <body>
@@ -59,7 +59,7 @@ _TERMINAL_PAGE = """<!doctype html>
   const term = new Terminal({
     cursorBlink: true, fontSize: 13,
     fontFamily: 'SF Mono, JetBrains Mono, Fira Code, Consolas, monospace',
-    theme: { background: '#15171a', foreground: '#e4e6eb' },
+    theme: { background: '#1c1b18', foreground: '#ece9e1', cursor: '#d97757' },
   });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
@@ -136,7 +136,7 @@ def register_terminal(server: Flask) -> bool:
                 tty=True,
                 _preload_content=False,
             )
-        except Exception as exc:  # noqa: BLE001 — surfaced into the terminal
+        except Exception as exc:  # noqa: BLE001
             audit("pod.exec.open", target, "failure", container=container, error=str(exc))
             ws.send(f"Failed to open shell: {exc}\r\n")
             return
@@ -194,5 +194,5 @@ def _bridge(ws, resp) -> None:
     finally:
         try:
             resp.close()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 — best-effort cleanup
             pass

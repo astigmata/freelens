@@ -9,8 +9,8 @@ import logging
 from dash import ALL, Dash, Input, Output, State, ctx
 from dash.exceptions import PreventUpdate
 
-from ..auth import active_clients
 from ..audit import audit
+from ..auth import active_clients
 from ..k8s.registry import resource_from_path
 
 log = logging.getLogger(__name__)

@@ -82,9 +82,15 @@ def create_sidebar() -> html.Div:
 
     return html.Div(
         [
-            html.Img(
-                src="assets/k8s-logo.png",
-                style={"width": "200px", "margin": "10px auto", "display": "block"},
+            html.Div(
+                [
+                    html.Div("⬡", className="sidebar-brand-mark"),
+                    html.Span(
+                        [html.B("Free"), "lens"],
+                        className="sidebar-brand-text",
+                    ),
+                ],
+                className="sidebar-brand",
             ),
             html.Div(nav_children, className="sidebar-nav"),
         ],

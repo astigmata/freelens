@@ -11,11 +11,10 @@ import logging
 from dash import Dash, Input, Output, State, html
 from dash.exceptions import PreventUpdate
 
-from ..auth import active_clients
 from ..audit import audit
+from ..auth import active_clients
 from ..k8s import crd
 from ..k8s import operations as ops
-from ..ui.layout import CRD_COLUMNS
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def register(app: Dash) -> None:
             raise PreventUpdate
         try:
             crds = crd.list_crds(active_clients())
-        except Exception as exc:  # noqa: BLE001 — surfaced as an empty dropdown
+        except Exception as exc:  # noqa: BLE001
             log.warning("Could not list CRDs: %s", exc)
             return []
         return [

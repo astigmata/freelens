@@ -5,8 +5,8 @@ import logging
 from dash import Dash, Input, Output, State, dcc, html
 from dash.exceptions import PreventUpdate
 
-from ..auth import active_clients
 from ..audit import audit
+from ..auth import active_clients
 from ..k8s import operations as ops
 from ..k8s.registry import get_object, resource_from_path
 from ..ui.components import (
@@ -14,8 +14,11 @@ from ..ui.components import (
     render_actions,
     render_details,
     render_exec,
+    render_forward,
     render_logs,
     render_yaml,
+)
+from ..ui.components import (
     terminal_src as render_terminal_src,
 )
 
@@ -63,9 +66,10 @@ def register(app: Dash) -> None:
         Input("detail-tabs", "value"),
         Input("selected-resource", "data"),
         Input("refresh-trigger", "data"),
+        Input("forward-trigger", "data"),
         State("url", "pathname"),
     )
-    def render_tab(tab, selected, _trigger, pathname):
+    def render_tab(tab, selected, _trigger, _forward_trigger, pathname):
         descriptor = resource_from_path(pathname)
         if not selected:
             return details_placeholder(descriptor)
@@ -87,6 +91,10 @@ def register(app: Dash) -> None:
                 if not descriptor.supports_exec:
                     return html.Div("Exec is not available for this resource type.")
                 return render_exec(descriptor, name, namespace)
+            if tab == "forward":
+                if not descriptor.supports_forward:
+                    return html.Div("Port-forward is not available for this resource type.")
+                return render_forward(descriptor, name, namespace)
             return render_details(
                 descriptor, get_object(descriptor, name, namespace, active_clients())
             )

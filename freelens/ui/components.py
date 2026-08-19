@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 
 from dash import dcc, html
 
+from .. import portforward
 from ..auth import active_clients
 from ..k8s import operations as ops
 from ..k8s.registry import DetailField, ResourceDescriptor, get_object
@@ -128,6 +129,85 @@ def render_exec(descriptor: ResourceDescriptor, name: str, namespace: str) -> ht
             ),
         ]
     )
+
+
+def render_forward(descriptor: ResourceDescriptor, name: str, namespace: str) -> html.Div:
+    """Port-forward tab: pick a port, start a local listener, manage active ones.
+
+    Declared ports are offered as a dropdown; when none are declared (common for
+    pods) the same ``forward-port`` id falls back to a free-form number input.
+    """
+    ports = ops.list_ports(active_clients(), descriptor.key, name, namespace)
+    if ports:
+        port_control = dcc.Dropdown(
+            id="forward-port",
+            options=ports,
+            value=ports[0]["value"],
+            clearable=False,
+            className="namespace-selector",
+        )
+    else:
+        port_control = dcc.Input(
+            id="forward-port",
+            type="number",
+            min=1,
+            max=65535,
+            placeholder="Remote port",
+            className="action-value",
+        )
+    return html.Div(
+        [
+            html.Div(
+                [
+                    port_control,
+                    dcc.Input(
+                        id="forward-local-port",
+                        type="number",
+                        min=0,
+                        max=65535,
+                        placeholder="Local port (auto)",
+                        className="action-value",
+                    ),
+                    html.Button("Start forward", id="forward-start", n_clicks=0,
+                                className="action-button"),
+                ],
+                className="logs-controls",
+            ),
+            html.Div(id="forward-result", className="action-result"),
+            render_forward_table(),
+        ]
+    )
+
+
+def render_forward_table() -> html.Div:
+    """List the process-wide active port-forwards, each with a stop button."""
+    forwards = portforward.MANAGER.list()
+    if not forwards:
+        return html.Div("No active port-forwards.", className="forward-empty")
+
+    rows = []
+    for fwd in forwards:
+        url = f"http://{fwd.address}"
+        rows.append(
+            html.Div(
+                [
+                    html.A(fwd.address, href=url, target="_blank",
+                           className="detail-value forward-link"),
+                    html.Span(
+                        f" → {fwd.kind.rstrip('s')} {fwd.namespace}/{fwd.name}:{fwd.remote_port}",
+                        className="detail-value",
+                    ),
+                    html.Button(
+                        "Stop",
+                        id={"type": "forward-stop", "index": fwd.id},
+                        n_clicks=0,
+                        className="action-button destructive",
+                    ),
+                ],
+                className="detail-row",
+            )
+        )
+    return html.Div(rows)
 
 
 def details_placeholder(descriptor: ResourceDescriptor) -> str:

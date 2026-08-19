@@ -12,24 +12,27 @@ from ..k8s.helm_catalog import CATALOG
 from ..k8s.registry import DEFAULT_RESOURCE, REGISTRY
 from .sidebar import create_sidebar
 
+# Colours come from CSS custom properties (see assets/styles.css) so the table
+# follows the active light/dark theme; var() resolves in the inline styles
+# DataTable injects.
 _STYLE_HEADER = {
-    "backgroundColor": "#2c3036",
-    "fontWeight": "600",
+    "backgroundColor": "var(--table-header-bg)",
+    "fontWeight": "700",
     "border": "none",
-    "borderBottom": "1px solid #34383e",
-    "color": "#9aa0a6",
+    "borderBottom": "1px solid var(--table-border)",
+    "color": "var(--table-header-fg)",
     "textTransform": "uppercase",
-    "fontSize": "12px",
-    "letterSpacing": "0.04em",
-    "padding": "12px 10px",
+    "fontSize": "11.5px",
+    "letterSpacing": "0.05em",
+    "padding": "12px 12px",
 }
 _STYLE_CELL = {
     "textAlign": "left",
-    "padding": "10px",
+    "padding": "11px 12px",
     "border": "none",
-    "borderBottom": "1px solid #2c3036",
-    "backgroundColor": "#24272c",
-    "color": "#e4e6eb",
+    "borderBottom": "1px solid var(--table-border)",
+    "backgroundColor": "var(--table-cell-bg)",
+    "color": "var(--table-cell-fg)",
     "fontSize": "13.5px",
     # Cap column widths and ellipsize so wide tables (e.g. Pods' 9 columns) fit
     # on screen instead of pushing the last columns out of view.
@@ -39,8 +42,8 @@ _STYLE_CELL = {
     "minWidth": "80px",
     "maxWidth": "240px",
 }
-_STYLE_FILTER = {"backgroundColor": "#2c3036", "color": "#e4e6eb"}
-BASE_CONDITIONAL = [{"if": {"row_index": "odd"}, "backgroundColor": "#1f2227"}]
+_STYLE_FILTER = {"backgroundColor": "var(--filter-bg)", "color": "var(--filter-fg)"}
+BASE_CONDITIONAL = [{"if": {"row_index": "odd"}, "backgroundColor": "var(--row-odd-bg)"}]
 
 # Helm releases are not Kubernetes API objects, so they get their own fixed
 # columns rather than being described by a ResourceDescriptor.
@@ -54,10 +57,10 @@ HELM_COLUMNS = [
     {"name": "Updated", "id": "updated"},
 ]
 HELM_CONDITIONAL = BASE_CONDITIONAL + [
-    {"if": {"filter_query": '{status} = "deployed"'}, "color": "#4caf50"},
-    {"if": {"filter_query": '{status} = "failed"'}, "color": "#f44336"},
-    {"if": {"filter_query": '{status} = "pending-install"'}, "color": "#ff9800"},
-    {"if": {"filter_query": '{status} = "pending-upgrade"'}, "color": "#ff9800"},
+    {"if": {"filter_query": '{status} = "deployed"'}, "color": "var(--success)"},
+    {"if": {"filter_query": '{status} = "failed"'}, "color": "var(--danger)"},
+    {"if": {"filter_query": '{status} = "pending-install"'}, "color": "var(--warning)"},
+    {"if": {"filter_query": '{status} = "pending-upgrade"'}, "color": "var(--warning)"},
 ]
 
 
@@ -71,6 +74,11 @@ def _resource_table() -> dash_table.DataTable:
         style_cell=_STYLE_CELL,
         style_filter=_STYLE_FILTER,
         style_data_conditional=BASE_CONDITIONAL + default.table_conditional,
+        # Paginated: only one page of rows is rendered in the DOM, so wide
+        # clusters (thousands of pods) stay responsive. All rows are still sent
+        # and native sort/filter apply across the whole dataset; the row counter
+        # above shows the full total.
+        page_action="native",
         page_size=TABLE_PAGE_SIZE,
         style_table={"overflowX": "auto"},
         # Row detail is driven by clicking any cell (active_cell); the checkbox
@@ -117,6 +125,15 @@ def _header() -> html.Div:
                         value=[],
                         className="autorefresh-toggle",
                     ),
+                    # Light/dark switch. Icon + actual switching are handled
+                    # clientside (see app.py) so the theme applies instantly and
+                    # persists across reloads without a server round-trip.
+                    html.Button(
+                        id="theme-toggle",
+                        n_clicks=0,
+                        className="theme-toggle",
+                        title="Toggle light / dark theme",
+                    ),
                 ],
                 className="header-controls",
             ),
@@ -140,6 +157,7 @@ def _detail_panel() -> html.Div:
                     dcc.Tab(label="YAML", value="yaml", className="detail-tab"),
                     dcc.Tab(label="Logs", value="logs", className="detail-tab"),
                     dcc.Tab(label="Exec", value="exec", className="detail-tab"),
+                    dcc.Tab(label="Forward", value="forward", className="detail-tab"),
                 ],
             ),
             html.Div(id="resource-details", className="pod-details"),
@@ -397,6 +415,8 @@ def create_layout() -> html.Div:
             dcc.Store(id="refresh-trigger", data=0),
             dcc.Store(id="selected-resource"),
             dcc.Store(id="action-pending"),
+            # Bumped after a port-forward starts/stops to re-render the Forward tab.
+            dcc.Store(id="forward-trigger", data=0),
             # Mobile drawer controls (hidden on wide screens via CSS).
             html.Button("☰", id="sidebar-toggle", className="sidebar-toggle", n_clicks=0),
             html.Div(id="sidebar-overlay", className="sidebar-overlay", n_clicks=0),

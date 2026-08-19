@@ -164,7 +164,7 @@ def register_auth(server: Flask) -> None:
     def _guard():
         path = request.path
         if path in _PUBLIC_PATHS or path.startswith(_PUBLIC_PREFIXES):
-            return None
+            return
 
         identity = identity_from_request()
         if identity is None:
@@ -176,7 +176,7 @@ def register_auth(server: Flask) -> None:
             log.warning("Blocked cross-origin %s %s (Origin=%r)",
                         request.method, path, request.headers.get("Origin"))
             abort(403)
-        return None
+        return
 
 
 _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", ""}

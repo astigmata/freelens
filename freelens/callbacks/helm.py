@@ -10,6 +10,7 @@ import logging
 from dash import ALL, Dash, Input, Output, State, ctx, html, no_update
 from dash.exceptions import PreventUpdate
 
+from ..audit import audit
 from ..k8s import helm
 from ..k8s.helm_catalog import CATALOG_BY_KEY
 from ..ui.components import (
@@ -19,7 +20,6 @@ from ..ui.components import (
     render_helm_manifest,
     render_helm_values,
 )
-from ..audit import audit
 
 log = logging.getLogger(__name__)
 
